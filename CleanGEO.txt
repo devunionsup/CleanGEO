@@ -1,6 +1,6 @@
 ! Title: CleanGEO
 ! Description: Georgia AdBlock Filter List — Blocks casino ads, popups, redirects, and virus links on Georgian websites.
-! Homepage: https://t.me/GEOShieldd
+! Homepage: https://t.me/CleanGE0
 ! Developer: https://t.me/MISTERGIORGI
 
 

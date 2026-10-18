@@ -175,7 +175,7 @@
 
 ||storage.croco.cam*mp4*$all
 ||*storage5.croco.cam*mp4*$all
-
+||cdn.croconet.cam^$frame
 
 
 ! qartulad.in
@@ -434,7 +434,7 @@ croconet.cam##a[href*="croco"]
 croconet.cam##a[href*="watch"]
 croconet.cam##a[class*="bg-linear"]
 croconet.cam##div iframe
-||cdn.croconet.cam^$frame
+
 
 
 

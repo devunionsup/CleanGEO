@@ -52,10 +52,6 @@
 ! ads-adsplay-video
 
 
-! low price all website
-##.p-product_detail-only-left-in-stock
-! low price all website
-
 
 
 

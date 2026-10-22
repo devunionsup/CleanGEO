@@ -353,7 +353,6 @@ geofilms.net##div[class*="jw"][class*="overlay"]
 ||liveball.sx##.fullscreen-block
 ||cdn.lbs.pw/prm/adjarabet/catfish*
 liveball.sx##a.catfish_block
-||*bit.ly*$all
 liveball.sx##div[class*="freebet"]
 liveball.sx##div[class*="banner_player"]
 liveball.sx##.odds_m_block *

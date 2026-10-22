@@ -177,6 +177,8 @@
 ||*storage5.croco.cam*mp4*$all
 ||cdn.croconet.cam^$frame
 ||croconet.cam/decorations/exclusive/*
+||croconet.cam/plus*
+
 
 
 
@@ -436,7 +438,8 @@ croconet.cam##a[href*="croco"]
 croconet.cam##a[href*="watch"]
 croconet.cam##a[class*="bg-linear"]
 croconet.cam##div iframe
-croconet.cam##a[href="/shtanga-goli-2-chaxmovanebuli"]
+croconet.cam##a[href="/plus"]
+
 
 
 

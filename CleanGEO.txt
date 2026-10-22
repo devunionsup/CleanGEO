@@ -176,6 +176,8 @@
 ||storage.croco.cam*mp4*$all
 ||*storage5.croco.cam*mp4*$all
 ||cdn.croconet.cam^$frame
+||croconet.cam/decorations/exclusive/*
+
 
 
 ! qartulad.in

@@ -56,18 +56,18 @@
 ! duckduckgo.com
 
 
-duckduckgo.com##.header--aside.js-header-aside
+duckduckgo.com##.header--aside
 duckduckgo.com###header-shell
 duckduckgo.com##[class*="taglineWrap"]
-duckduckgo.com##[class*="search-toggle-box"] [class*="modeSelector"]
+duckduckgo.com##[class*="modeSelector"]
 duckduckgo.com##[class*="home-customizer"]
 duckduckgo.com###home-below-the-fold
 duckduckgo.com##[class*="pull-tab-scroll-button"]
 duckduckgo.com##.footer
-duckduckgo.com##[class*="qrc3T8W2PIYg9L63oA06"] nav > div:last-child
+duckduckgo.com##nav > div:last-child
 duckduckgo.com##[class*="mobile-home-promo"]
 duckduckgo.com##ol.react-results--main > li:first-child
-duckduckgo.com##ol.react-results--main > li:nth-child(3)
+
 
 
 

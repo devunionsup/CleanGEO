@@ -5,7 +5,6 @@
 
 
 
-
 ! virus-domin-ad-direct-virus
 
 
@@ -47,6 +46,22 @@
 ||*my.toruftuiov.com*$all
 ||*nwien.com*$all
 ||*port80ge.adocean.pl*mp4*$all
+
+
+
+
+! browser search 
+
+
+! duckduckgo.com
+
+
+duckduckgo.com##.header--aside.js-header-aside
+duckduckgo.com###header-logo-wrapper
+
+
+
+
 
 
 ! ads-adsplay-video

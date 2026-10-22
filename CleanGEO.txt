@@ -67,8 +67,7 @@ duckduckgo.com##.footer
 duckduckgo.com##nav > div:last-child
 duckduckgo.com##[class*="mobile-home-promo"]
 duckduckgo.com##ol.react-results--main > li:first-child
-duckduckgo.com##li:has(> div.react-module):has(.react-module)
-
+duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
 
 
 

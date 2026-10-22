@@ -434,7 +434,7 @@ croconet.cam##a[href*="croco"]
 croconet.cam##a[href*="watch"]
 croconet.cam##a[class*="bg-linear"]
 croconet.cam##div iframe
-
+croconet.cam##a[href="/shtanga-goli-2-chaxmovanebuli"]
 
 
 

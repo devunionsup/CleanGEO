@@ -353,6 +353,9 @@ ufasofilmebi.ge###banner-container
 ufasofilmebi.ge###donatePopup
 ufasofilmebi.tv###app-banner-container
 ufasofilmebi.tv###ufaso-chat
+ufasofilmebi.tv##.premium-ad-item
+ufasofilmebi.tv###ufpn-b
+
 
 
 

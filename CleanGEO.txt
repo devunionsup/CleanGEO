@@ -429,6 +429,7 @@ geosaitebi.tv##div.jw-overlays.jw-reset
 ! croconet.cam
 
 
+croconet.cam##img[src^="/decorations/exclusive/"]
 croconet.cam##a[href*="croco"]
 croconet.cam##a[href*="watch"]
 croconet.cam##a[class*="bg-linear"]

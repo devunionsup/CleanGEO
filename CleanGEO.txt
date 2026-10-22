@@ -440,7 +440,7 @@ croconet.cam##a[class*="bg-linear"]
 croconet.cam##div iframe
 croconet.cam##a[href="/plus"]
 croconet.cam##a[aria-hidden="true"][data-nosnippet="true"]
-
+croconet.cam##div[class*="bg-main/"]
 
 
 ! mykadri.tv

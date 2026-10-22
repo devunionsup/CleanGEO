@@ -57,8 +57,6 @@
 
 
 duckduckgo.com##.header--aside.js-header-aside
-duckduckgo.com###header-logo-wrapper
-duckduckgo.com##.header--aside.js-header-aside
 duckduckgo.com###header-shell
 duckduckgo.com##[class*="taglineWrap"]
 duckduckgo.com##[class*="search-toggle-box"] [class*="modeSelector"]

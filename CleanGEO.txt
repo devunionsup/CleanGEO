@@ -48,35 +48,7 @@
 ||*port80ge.adocean.pl*mp4*$all
 
 
-
-
-! browser search 
-
-
-! duckduckgo.com
-
-
-duckduckgo.com##.header--aside
-duckduckgo.com###header-shell
-duckduckgo.com##[class*="taglineWrap"]
-duckduckgo.com##[class*="modeSelector"]
-duckduckgo.com##[class*="home-customizer"]
-duckduckgo.com###home-below-the-fold
-duckduckgo.com##[class*="pull-tab-scroll-button"]
-duckduckgo.com##.footer
-duckduckgo.com##nav > div:last-child
-duckduckgo.com##[class*="mobile-home-promo"]
-duckduckgo.com##ol.react-results--main > li:first-child
-duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
-
-
-
-
-
-! ads-adsplay-video
-
-
-
+! ads-adsplay-video->
 
 
 ! combatfootages.com
@@ -111,7 +83,6 @@ duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
 
 
 
-
 ! adjaranett.com
 
 ||adjaranett.com/*mp4*$all
@@ -127,7 +98,6 @@ duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
 
 
 ||videos.uyure.net*mp4*$all
-
 
 
 
@@ -194,7 +164,6 @@ duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
 
 
 
-
 ! croconet.cam
 
 ||storage.croco.cam*mp4*$all
@@ -202,7 +171,6 @@ duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
 ||cdn.croconet.cam^$frame
 ||croconet.cam/decorations/exclusive/*
 ||croconet.cam/plus*
-
 
 
 
@@ -220,13 +188,11 @@ duckduckgo.com##ol.react-results--main > li:has(> div.react-module)
 
 
 
-
 ! kinolab.cc
 
 
 ||ftp.kinolab.cc/ads/$media,video
 ||ftp.kinolab.cc/ads/*mp4*$all
-
 
 
 
@@ -244,15 +210,11 @@ qartulad.in##.ad-catfish
 
 
 
-
-
 ! adjaranets.com
 
 
 adjaranets.com##section[class~="sm:wrapper"]:has(> div > center a[download])
 adjaranets.com##a[href="https://py.md/MediaPlayer"]
-
-
 
 
 
@@ -264,8 +226,6 @@ combatfootages.com##.adblock-bait-wrap
 combatfootages.com##.adblock-wall
 combatfootages.com#$?#body { overflow: auto !important; }
 combatfootages.com#$?#html { overflow: auto !important; }
-
-
 
 
 
@@ -288,7 +248,6 @@ ge.movie##[id^="popup"]
 adjaranet.bet##.fixed.inset-0
 adjaranet.bet##[class*="overlay"]
 adjaranet.bet##[id*="overlay"]
-
 
 
 
@@ -354,7 +313,6 @@ myvideo.ge##.video-player-cont > div[style*="display: block"]
 
 
 
-
 ! ufasofilmebi.ge
 
 
@@ -364,8 +322,6 @@ ufasofilmebi.tv###app-banner-container
 ufasofilmebi.tv###ufaso-chat
 ufasofilmebi.tv##.premium-ad-item
 ufasofilmebi.tv###ufpn-b
-
-
 
 
 
@@ -398,7 +354,6 @@ liveball.sx#$#div.tg_block.align_center { remove: true; }
 
 
 
-
 ! kinolab.cc
 
 
@@ -410,7 +365,6 @@ kinolab.cc#$?#.jw-media:has(video[src*="/ads/"]) { display: none !important; }
 
 
 
-
 ! kinomigma.com
 
 
@@ -418,7 +372,6 @@ kinomigma.com###donateModal
 kinomigma.com#$###donateModal { remove: true }
 kinomigma.com#$#body { overflow: auto !important; }
 kinomigma.com###donateModal + .modal-backdrop
-
 
 
 

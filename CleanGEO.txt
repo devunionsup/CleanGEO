@@ -5,7 +5,7 @@
 
 
 
-! virus-domin-ad-direct-virus
+! domin virus link host CDN~>
 
 
 ||*goodpics.net*$all
@@ -48,7 +48,11 @@
 ||*port80ge.adocean.pl*mp4*$all
 
 
-! ads-adsplay-video->
+! domin virus link host CDN~^
+
+
+
+! prerol ads paly reclam->
 
 
 ! combatfootages.com
@@ -196,9 +200,12 @@
 
 
 
-! webiste-script-ads-plus
-! website-script-ads-show
-! website-script-ads-show
+! prerol ads paly reclam~^
+
+
+
+
+! CSS Element Hiding Rules~>
 
 
 ! qartulad.in
@@ -433,3 +440,6 @@ mykadri.tv##.mykadri-catfish:remove()
 mykadri.tv##.avc-asvla
 mykadri.tv##center:has(> .mykadri-device-banner):remove()
 mykadri.tv#%#//scriptlet('remove-class', 'is-visible', 'div.mykadri-catfish')
+
+
+! CSS Element Hiding Rules~^

@@ -2,6 +2,11 @@
 
 const JINA = 'https://r.jina.ai/';
 const CACHE_PREFIX = 'cg.q.';
+
+/* DuckDuckGo settings forced on every request, so they never stay switched on:
+     kp=-2    Safe Search off
+     kpsb=-1  'Always private' / 'Protected' reminder hidden */
+const DDG_OFF = 'kp=-2&kpsb=-1';
 const TTL = 5 * 60 * 1000;
 
 export const ENGINES = {
@@ -98,8 +103,9 @@ function cacheSet(key, v) {
 }
 
 /* ---------- DuckDuckGo (lite) ---------- */
-async function searchDdg(q) {
-  const target = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q) + '&kl=wt-wt';
+async function ddgPage(q, start) {
+  const target = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q) + '&kl=wt-wt'
+    + (start ? '&s=' + start : '') + '&' + DDG_OFF;
   const html = await viaJina(target, { html: true });
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const out = [];
@@ -126,10 +132,26 @@ async function searchDdg(q) {
   return out;
 }
 
+/* two pages: DDG shows ten hits at a time, and ten hits alone was the whole
+   result page when Bing's market hint was getting in its own way */
+async function searchDdg(q) {
+  const first = await ddgPage(q, 0);
+  if (first.length < 10) return first;
+  const second = await ddgPage(q, 10).catch(() => []);
+  return first.concat(second);
+}
+
 /* ---------- Bing ---------- */
-async function searchBing(q) {
-  const target = 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&setlang=en&cc=GE';
-  const html = await viaJina(target, { html: true });
+/* Pinning the market (cc=GE&setlang=en) makes Bing answer "There are no results"
+   to a Georgian query, so the bare URL — where Bing picks the market itself —
+   goes first and the market-hinted forms are only a fallback. */
+const BING_TARGETS = [
+  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&adlt=off',
+  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q),
+  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&setlang=en&cc=GE&adlt=off',
+];
+
+function parseBing(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const out = [];
   for (const li of doc.querySelectorAll('li.b_algo')) {
@@ -149,6 +171,18 @@ async function searchBing(q) {
     if (out.length >= 25) break;
   }
   return out;
+}
+
+async function searchBing(q) {
+  let lastErr = null;
+  for (const target of BING_TARGETS) {
+    try {
+      const out = parseBing(await viaJina(target(q), { html: true }));
+      if (out.length) return out;
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr) throw lastErr;
+  return [];
 }
 
 /* ---------- Wikipedia (direct CORS) ---------- */

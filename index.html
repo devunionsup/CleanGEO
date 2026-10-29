@@ -1875,16 +1875,17 @@ function favicon(host) {
     'https://www.google.com/s2/favicons?sz=64&domain=' + enc,
   ];
   const img = el('img', {
-    src: srcs[0], alt: '', width: 16, height: 16, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer',
+    src: srcs[0], alt: '', width: 16, height: 16, decoding: 'async', referrerpolicy: 'no-referrer',
   });
   img.addEventListener('load', () => {
     if (img.naturalWidth > 1) tile.classList.add('has');
     else next();
   });
   img.addEventListener('error', next);
+  const timer = setTimeout(() => { if (!tile.classList.contains('has')) next(); }, 4000);
   function next() {
     step += 1;
-    if (step >= srcs.length) { img.remove(); return; }
+    if (step >= srcs.length) { clearTimeout(timer); img.remove(); return; }
     tile.classList.remove('has');
     img.src = srcs[step];
   }

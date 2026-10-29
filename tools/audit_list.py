@@ -56,7 +56,7 @@ for i, raw in enumerate(lines, 1):
     if re.match(r'^\|\|[^#]*##', line) or re.match(r'^\|\|[^#]*#\?#', line):
         mixed.append((i, line))
 
-    if '##' in line or '#?#' in line or '#$#' in line or '#%#' in line:
+    if any(sep in line for sep in ('##', '#?#', '#$?#', '#$#', '#@#', '#%#')):
         counts['cos'] += 1
         if section:
             section[2] = True
@@ -88,7 +88,5 @@ print('unanchored rules ', len(unanchored))
 for l in unanchored:
     print('   ', l)
 
-CASUAL = ['cs.titech.ac.jp', 'ondevice-agreements.apple.com']
-accidental = [(i, l) for i, l in network if any(d in l for d in CASUAL)]
 if unanchored or mixed or dups:
     sys.exit(0)

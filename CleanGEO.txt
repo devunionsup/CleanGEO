@@ -49,6 +49,14 @@
 
 
 ! domin virus link host CDN~^
+! all website block html elemnt >
+
+
+
+##iframe[src*="trannygem.com"]
+##iframe[src*="a.adtng.com"]
+
+
 
 
 

@@ -105,16 +105,9 @@ body:not(.home) .hero{display:none}
 .result-meta strong{color:var(--fg);font-weight:650}
 .result-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
 .res{
-  display:grid;grid-template-columns:36px 1fr;gap:12px;
-  padding:14px 12px;border-radius:14px;border:1px solid transparent;
+  display:block;padding:14px 12px;border-radius:14px;border:1px solid transparent;
 }
 .res:hover{background:var(--card);border-color:var(--line)}
-.avatar{
-  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
-  font-weight:700;font-size:15px;color:#06121f;
-  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 75%,#fff),color-mix(in srgb,var(--accent2) 75%,#fff));
-  user-select:none;
-}
 .res-title{
   display:inline-block;font-size:17px;line-height:1.35;color:var(--accent);
   font-weight:600;cursor:pointer;word-break:break-word;
@@ -229,8 +222,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:380px){
-  .res{grid-template-columns:30px 1fr;gap:9px;padding:12px 6px}
-  .avatar{width:30px;height:30px;border-radius:9px;font-size:13px}
+  .res{display:block;padding:12px 6px}
   .res-title{font-size:16px}
   .topbar{padding-left:10px;padding-right:10px}
   .brand span{font-size:15px}

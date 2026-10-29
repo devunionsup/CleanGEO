@@ -2,8 +2,8 @@
 import { webSearch } from './search.js';
 import { fetchReadable } from './proxy.js';
 import {
-  blockList, bootstrap, checkForUpdates, downloadList, changelog, source, setSource,
-  autoConfig, setAuto, settings, saveSettings, savedAt, lastCheck, extraRules, setExtraRules,
+  blockList, bootstrap, checkForUpdates, downloadList, changelog, source,
+  autoConfig, setAuto, settings, saveSettings, savedAt, lastCheck, extraRules, setExtraRules, sanitizeExtra,
   onUpdate, scheduleAuto, watchVisibility,
 } from './store.js';
 
@@ -40,7 +40,7 @@ function refreshStatus() {
   const on = settings().shield;
   dot.className = 'dot ' + (!on ? '' : s.rules ? 'ok' : 'err');
   txt.textContent = !on ? 'ფილტრი გამორთული' : s.rules ? `დაცვა ჩართული` : 'სია ცარიელია';
-  txt.title = `${s.rules} წესი · ${s.domains} დომენი`;
+  txt.title = `${s.rules} AdGuard წესი · ${s.domains} დომენი · ${s.exceptions || 0} @@`;
   $('#listLink').href = source();
   renderStats();
   renderLog();
@@ -50,9 +50,9 @@ function renderStats() {
   const list = state.list || blockList();
   const s = list.stats();
   const nodes = [
-    [s.rules, 'წესი'],
+    [s.rules, 'AdGuard წესი'],
     [s.domains, 'დომენი'],
-    [s.cosmetic, 'დამალვის წესი'],
+    [s.exceptions || 0, 'გამონაკლისი'],
     [savedAt() ? new Date(savedAt()).toLocaleDateString('ka-GE', { day: '2-digit', month: 'short' }) : '—', 'განახლდა'],
   ];
   $('#stats').replaceChildren(...nodes.map(([v, l]) =>
@@ -142,12 +142,12 @@ function renderResults() {
       el('div', { class: 'empty' },
         'შედეგი ვერ მოიძებნა.',
         el('div', { class: 'chips' },
-          el('a', { class: 'chip', href: 'https://duckduckgo.com/?q=' + encodeURIComponent(state.query), target: '_blank', rel: 'noopener' }, 'DuckDuckGo-ზე გახსნა'),
+          el('a', { class: 'chip', href: 'https://duckduckgo.com/?q=' + encodeURIComponent(state.query) + '&kp=-2&kpsb=-1', target: '_blank', rel: 'noopener' }, 'DuckDuckGo-ზე გახსნა'),
           el('a', { class: 'chip', href: 'https://www.google.com/search?q=' + encodeURIComponent(state.query), target: '_blank', rel: 'noopener' }, 'Google-ზე გახსნა'))));
     return;
   }
 
-  const blockedCount = items.filter(r => shieldOn && list.check(r.url).blocked).length;
+  const blockedCount = items.filter(r => shieldOn && list.check(r.url, { pageUrl: location.href }).blocked).length;
   const metas = el('div', { class: 'result-meta' },
     el('strong', {}, String(items.length)),
     ' შედეგი',
@@ -167,7 +167,7 @@ function enginesLabel() {
 
 function renderResult(r, list, shieldOn) {
   const host = siteKey(r.url);
-  const verdict = shieldOn && list ? list.check(r.url) : { blocked: false };
+  const verdict = shieldOn && list ? list.check(r.url, { pageUrl: location.href }) : { blocked: false };
   const blocked = verdict.blocked;
 
   const title = el('a', {
@@ -175,49 +175,64 @@ function renderResult(r, list, shieldOn) {
     'data-open': r.url,
   }, r.title || r.url);
 
-  const avatar = el('div', { class: 'avatar', 'aria-hidden': 'true' }, (host[0] || '?').toUpperCase());
-
-  const origin = el('a', { class: 'mini', href: r.url, target: '_blank', rel: 'noopener noreferrer' }, 'ორიგინალი ↗');
-  origin.addEventListener('click', (ev) => {
-    if (blocked && settings().warn) {
-      ev.preventDefault();
-      if (!confirm(`⛔ ${host || r.url} ბლოკ-ლისტშია.\n\nორიგინალი საიტი დაუცველად გავხსნათ?`)) return;
-      window.open(r.url, '_blank', 'noopener');
-    }
-  });
-
   const actions = el('div', { class: 'res-actions' },
     el('button', { class: 'mini', type: 'button', 'data-reader': r.url }, '🛡️ დაცული გახსნა'),
-    origin);
+    el('button', { class: 'mini', type: 'button', 'data-direct': r.url }, 'პირდაპირ ↗'));
 
   const body = el('div', {},
     title,
     el('div', { class: 'res-url' }, r.shown || host),
     r.snippet ? el('p', { class: 'res-snippet' }, r.snippet) : null,
     blocked ? el('div', { style: 'margin-top:8px' },
-      el('span', { class: 'badge' }, '⛔ CleanGEO ბლოკავს: ' + (verdict.domain || 'წესი'))) : null,
+      el('span', { class: 'badge', title: (verdict.rules || []).join('\n') },
+        '⛔ AdGuard წესი: ' + ((verdict.rules && verdict.rules[0]) || verdict.reason || 'დაბლოკვა'))) : null,
     actions);
 
-  const row = el('article', { class: 'res' + (blocked ? ' blocked' : '') }, avatar, body);
+  const row = el('article', { class: 'res' + (blocked ? ' blocked' : '') }, body);
 
   title.addEventListener('click', (ev) => {
     ev.preventDefault();
-    chooseOpen(r.url, blocked, verdict);
+    chooseOpen(r);
   });
-  actions.querySelector('[data-reader]').addEventListener('click', () => openReader(r.url));
+  actions.querySelector('[data-reader]').addEventListener('click', () => openSmart(r.url));
+  actions.querySelector('[data-direct]').addEventListener('click', () => {
+    if (blocked && settings().warn) {
+      if (!confirm(`⛔ ${host || r.url} ბლოკავს AdGuard წესი:\n${(verdict.rules || []).join('\n') || verdict.reason}\n\nმაინც გავხსნათ ჩვეულებრივ ბრაუზერში?`)) return;
+    }
+    openDirect(r.url);
+  });
   return row;
 }
 
-function chooseOpen(url, blocked, verdict) {
-  if (blocked && settings().warn) {
-    const ok = confirm(`⛔ ეს საიტი თქვენს ბლოკ-ლისტშია (${verdict.domain || 'წესი'}).\n\nმაინც გავხსნათ დაცულ რეჟიმში?`);
+/* the reader is tried first; if it cannot read the page, the link continues in a
+   normal browser tab instead of showing the site's bot-protection text */
+function openSmart(url) { openReader(url); }
+
+function chooseOpen(r) {
+  const host = siteKey(r.url);
+  const verdict = (settings().shield && (state.list || blockList()).check(r.url, { pageUrl: location.href })) || { blocked: false };
+
+  if (settings().shieldFirst && readability[host] === false) { openDirect(r.url); return; }
+
+  if (verdict.blocked && settings().warn) {
+    const ok = confirm(`⛔ ${host || r.url} ბლოკავს AdGuard წესი:\n${(verdict.rules || []).join('\n') || verdict.reason}\n\nმაინც გავხსნათ?`);
     if (!ok) return;
   }
-  if (!settings().shieldFirst) { window.open(url, '_blank', 'noopener'); return; }
-  openReader(url);
+
+  if (!settings().shieldFirst) { openDirect(r.url); return; }
+  openSmart(r.url);
 }
 
 /* ---------- reader ---------- */
+
+/* remember per host whether the protected reader can actually reach the site,
+   so a site it cannot read opens in the normal browser instead of a dead end */
+const readability = Object.create(null);
+function openDirect(url) {
+  const w = window.open(url, '_blank', 'noopener');
+  // async paths (probe, reader failure) can lose the popup gesture — navigate in place then
+  if (!w) location.href = url;
+}
 
 /* cosmetic rules from the block list, active only while the reader is open */
 function applyReaderCss(rules) {
@@ -248,6 +263,7 @@ async function openReader(url) {
 
   try {
     const page = await fetchReadable(url);
+    readability[siteKey(url)] = true;
     $('#readerTitle').textContent = page.title;
     const doc = el('div', { class: 'doc' });
     doc.innerHTML = page.html;
@@ -264,23 +280,35 @@ async function openReader(url) {
       a.removeAttribute('target');
       a.addEventListener('click', (ev) => {
         ev.preventDefault();
-        const v = list.check(href);
+        const v = list.check(href, { pageUrl: url });
         if (v.blocked && settings().warn) {
-          if (!confirm(`⛔ ${siteKey(href)} ბლოკ-ლისტშია. გავხსნათ დაცულ რეჟიმში?`)) return;
+          if (!confirm(`⛔ ${siteKey(href)} ბლოკავს AdGuard წესი: ${(v.rules || []).join(', ') || v.reason}. გავხსნათ?`)) return;
         }
+        if (readability[siteKey(href)] === false) { window.open(href, '_blank', 'noopener'); return; }
         openReader(href);
       });
     });
     body.scrollTop = 0;
     if (!page.text || page.text.length < 120) {
-      body.prepend(el('div', { class: 'notice warn' }, 'გვერდის ნაწილი ვერ წაიკითხა. სცადეთ ორიგინალის გახსნა ↗'));
+      readability[siteKey(url)] = false;
+      closeReader();
+      const w = window.open(url, '_blank', 'noopener');
+      if (!w) location.href = url;
     }
   } catch (e) {
-    const hint = /ბოტ|Cloudflare/i.test(String(e.message)) ? 'საიტი იცავს თავს ავტომატური წვდომისგან.' : 'გვერდი ვერ ჩაიტვირთა დაცულ რეჟიმში.';
+    const host = siteKey(url);
+    readability[host] = false;
+    // no error wall and no protection text: continue in a normal browser tab,
+    // and fall back to navigating this tab if the popup is blocked
     body.replaceChildren(
-      el('div', { class: 'notice warn' },
-        el('div', {}, hint, el('div', { style: 'font-size:12.5px;opacity:.8' }, 'შეგიძლიათ გახსნათ ორიგინალი — მაშინ საიტის დაცვა CleanGEO-ზე აღარ ვრცელდება.')),
-        el('button', { class: 'mini', type: 'button', onclick: () => window.open(url, '_blank', 'noopener') }, 'ორიგინალის გახსნა ↗')));
+      el('div', { class: 'empty' }, 'იხსნება ჩვეულებრივ ბრაუზერში…',
+        el('div', { style: 'margin-top:10px' },
+          el('button', { class: 'mini', type: 'button', onclick: () => { window.open(url, '_blank', 'noopener'); } }, 'გახსნა ↗'))));
+    setTimeout(() => {
+      closeReader();
+      const w = window.open(url, '_blank', 'noopener');
+      if (!w) location.href = url;
+    }, 350);
   }
 }
 
@@ -315,7 +343,7 @@ function syncControls() {
   const a = autoConfig();
   $('#autoToggle').checked = a.enabled;
   $('#intervalSelect').value = String(a.interval);
-  $('#sourceInput').value = source();
+  $('#intervalSelect').value = String(a.interval);
   $('#extraRules').value = extraRules();
 }
 
@@ -355,6 +383,7 @@ function aboutNodes() {
     el('h3', {}, '2. დაცული გახსნა'),
     p('საიტი იხსნება ტექსტურ რეჟიმში: მისი JavaScript, iframe-ები, ფორმები, ტრეკერ-პიქსელები და რეკლამები არ მუშაობს. სიის CSS წესები რეკლამის ბლოკებს მალავს.'),
     el('h3', {}, '3. ბლოკ-ლისტი'),
+    p('გადაწყვეტილებას იღებს მხოლოდ AdGuard სინტაქსი — ის წესები, რომლებსაც AdGuard Pro იღებს: ||host^, @@ გამონაკლისი, $important, $document, $domain=, ## / #?# / #$# / #%#. ისეთი ოფციები, რომლებიც გვერდს არ ბლოკავს ($media, $popup, $third-party, $removeparam, $app...), გვერდს არ ხურავს; ბრაუზერისთვის დამახასიათებელი დაბლოკვის სხვა მექანიზმი აქ არ არის.'),
     p('სია იტვირთება GitHub-იდან და ავტომატურად შემოწმდება თქვენ მიერ არჩეული სიხშირით. თუ სიაში წესები დაემატა — დაემატება თქვენთანაც; თუ წაიშალა — წაიშლება თქვენთანაც. ცვლილებები ჩანს პარამეტრებში.'),
     el('h3', {}, '4. მოწყობილობები'),
     p('საიტი ადაპტირებულია ტელეფონზე, პლანშეტსა და კომპიუტერზე. iPhone-ზე „გაზიარება → ეკრანზე დამატება“ გახდის მას აპად.'),
@@ -412,19 +441,17 @@ function wire() {
     setAuto({ interval: Number(e.target.value) });
     scheduleAuto();
   });
-  $('#saveSource').addEventListener('click', () => {
-    const v = $('#sourceInput').value.trim();
-    if (!/^https?:\/\//i.test(v)) { toast('შეიყვანეთ სრული ბმული (https://…)'); return; }
-    setSource(v);
-    refreshStatus();
-    doCheck(true);
-  });
   $('#checkNow').addEventListener('click', () => doCheck(true));
   $('#extraRules').addEventListener('change', (e) => {
-    setExtraRules(e.target.value);
+    const clean = setExtraRules(e.target.value);
+    e.target.value = clean.text;
     refreshStatus();
     if (state.results.length) renderResults();
-    toast('საკუთარი წესები შენახულია');
+    if (clean.dropped.length) {
+      toast('მიიღება მხოლოდ დამატებითი ფილტრები — CleanGEO-ს წესების გაუქმება (@@, $badfilter) დაუშვებელია', 4200);
+    } else {
+      toast('საკუთარი წესები შენახულია');
+    }
   });
 
   for (const [id, key] of [['setShield', 'shield'], ['setShieldFirst', 'shieldFirst'], ['setCosmetic', 'cosmetic'], ['setWarn', 'warn']]) {

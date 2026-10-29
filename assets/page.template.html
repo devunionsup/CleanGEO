@@ -72,6 +72,7 @@
       <div id="readerTitle" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
       <div class="url" id="readerUrl"></div>
     </div>
+    <span class="badge" id="readerBlocked" hidden></span>
     <button class="icon-btn" id="readerOpen" type="button" aria-label="ორიგინალის გახსნა" title="ორიგინალის გახსნა">↗</button>
   </div>
   <div class="reader-body" id="readerBody"></div>
@@ -97,12 +98,11 @@
     <select id="intervalSelect"></select>
   </div>
   <div class="row" style="border-bottom:0;padding-bottom:4px">
-    <div>წყარო<small id="sourceText"></small></div>
+    <div>CleanGEO ბლოკ-ლისტი<small id="sourceText"></small></div>
   </div>
-  <input class="inp" id="sourceInput" style="width:100%" spellcheck="false" autocapitalize="off">
+  <p class="hint" style="margin-top:0">სიის წყარო ფიქსირებულია და შეცვლა შეუძლებელია — CleanGEO-ს წესები ყოველთვის ჩართულია. საკუთარი ფილტრები დაამატეთ ქვემოთ.</p>
   <div style="display:flex;gap:8px;margin-top:10px">
     <button class="btn" id="checkNow" type="button" style="flex:1">ახლავე შემოწმება</button>
-    <button class="btn ghost" id="saveSource" type="button">შენახვა</button>
   </div>
   <p class="hint" id="updateHint"></p>
 
@@ -111,7 +111,7 @@
 
   <h2>დაცვის რეჟიმი</h2>
   <div class="row">
-    <div>საშიში ბმულების დაბლოკვა<small>საშიში საიტი არ გაიხსნება გაფრთხილების გარეშე</small></div>
+    <div>AdGuard წესებით ბლოკვა<small>გვერდს ხურავს მხოლოდ AdGuard წესი — ||host^, $document, @@</small></div>
     <input type="checkbox" id="setShield">
   </div>
   <div class="row">
@@ -119,18 +119,23 @@
     <input type="checkbox" id="setShieldFirst">
   </div>
   <div class="row">
-    <div>რეკლამის ელემენტების დამალვა<small>სიის CSS წესებით</small></div>
+    <div>რეკლამის ელემენტების დამალვა<small>სიის AdGuard კოსმეტიკური წესებით (##, #?#, #$#)</small></div>
     <input type="checkbox" id="setCosmetic">
   </div>
   <div class="row">
     <div>გაფრთხილება საშიშ საიტზე<small>სანამ გახსნის ღილაკს დააჭერთ</small></div>
     <input type="checkbox" id="setWarn">
   </div>
+  <div class="row">
+    <div>მკაცრი რეჟიმი<small>გვერდი არასდროს იხსნება ფილტრის გარეშე — ბლოკ-სია ყოველთვის მოქმედებს</small></div>
+    <input type="checkbox" id="setStrict">
+  </div>
 
   <h2>საკუთარი წესები</h2>
   <textarea class="inp" id="extraRules" rows="4" style="width:100%;font-family:ui-monospace,monospace;font-size:13px"
     placeholder="||example.com^&#10;example.com##.ad-banner"></textarea>
-  <p class="hint">თითო წესი ერთ ხაზზე — საჯარო სიის გვერდით მუშაობს და განახლებისას არ იშლება.</p>
+  <p class="hint">თითო წესი ერთ ხაზზე, AdGuard სინტაქსით — მხოლოდ დამატება (დაბლოკვა ან დამალვა).
+    გამონაკლისი (@@) და $badfilter არ მიიღება, რადგან ისინი CleanGEO-ს წესებს აუქმებს.</p>
 
   <div style="margin-top:16px;display:flex;gap:8px">
     <a class="btn ghost" href="CleanGEO.txt" target="_blank" rel="noopener" style="flex:1;text-decoration:none">სიის ნახვა</a>

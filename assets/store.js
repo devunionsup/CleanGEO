@@ -31,6 +31,7 @@ const DEFAULT_SETTINGS = {
   shieldFirst: true,   // open links filtered by default
   cosmetic: true,      // apply the list's CSS rules
   warn: true,          // warn before opening a blocked host
+  strict: false,       // optional: refuse unfiltered opening entirely
 };
 
 /* ---------- tiny storage helpers ---------- */
@@ -64,11 +65,10 @@ export function saveSettings(patch) {
 }
 
 /* ---------- source ---------- */
+/* The source is fixed to CleanGEO's own list. Users may add their own filters
+   on top, but nobody can repoint the app at another list or drop this one. */
 export function source() {
-  return readStr(K.source, DEFAULT_SOURCE) || DEFAULT_SOURCE;
-}
-export function setSource(url) {
-  writeStr(K.source, url.trim());
+  return DEFAULT_SOURCE;
 }
 
 /* ---------- auto refresh config ---------- */
@@ -97,7 +97,7 @@ export function lastCheck() {
 }
 
 export function blockList({ force = false } = {}) {
-  const extra = readStr(K.extra, '');
+  const extra = sanitizeExtra(readStr(K.extra, '')).text;
   const text = listText();
   const sig = hash(text) + ':' + hash(extra) + ':' + text.length;
   if (!force && cachedList && cachedList.sig === sig) return cachedList.list;
@@ -106,11 +106,29 @@ export function blockList({ force = false } = {}) {
   return list;
 }
 
-/* locally added lines (user's own rules) */
+/* locally added lines (user's own rules — they add filtering, never remove it) */
 export function extraRules() { return readStr(K.extra, ''); }
+
+/* An addition is a filter of its own, so only rules that block or hide are
+   kept. @@ exception, #@# cosmetic exception and $badfilter cancel CleanGEO's
+   own rules — that is removal, not addition, so those lines are refused. */
+export function sanitizeExtra(text) {
+  const kept = [];
+  const dropped = [];
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('!') || line.startsWith('[')) { kept.push(raw); continue; }
+    if (line.startsWith('@@') || line.includes('#@#') || /\$[^#]*\bbadfilter\b/i.test(line)) { dropped.push(line); continue; }
+    kept.push(raw);
+  }
+  return { text: kept.join('\n').trim(), dropped };
+}
+
 export function setExtraRules(text) {
-  writeStr(K.extra, text);
+  const clean = sanitizeExtra(text);
+  writeStr(K.extra, clean.text);
   cachedList = null;
+  return clean;
 }
 
 export function usernames() { return readJSON(K.log, []); }
@@ -174,12 +192,11 @@ async function latestCommit() {
 }
 
 /* ---------- installing / updating ---------- */
-export function installFromText(text, { url = '', commit = '', etag = '' } = {}) {
+export function installFromText(text, { commit = '', etag = '' } = {}) {
   const before = listText();
   writeStr(K.text, text);
   writeStr(K.savedAt, String(Date.now()));
   writeStr(K.etag, etag);
-  if (url) writeStr(K.source, url);
   if (commit) writeStr(K.commit, commit);
   cachedList = null;
   const diff = before ? diffRules(before, text) : { added: [], removed: [], total: ruleKeys(text).size };

@@ -143,7 +143,7 @@ function renderResults() {
         'შედეგი ვერ მოიძებნა.',
         el('div', { class: 'chips' },
           el('a', { class: 'chip', href: 'https://duckduckgo.com/?q=' + encodeURIComponent(state.query) + '&kp=-2&kpsb=-1', target: '_blank', rel: 'noopener' }, 'DuckDuckGo-ზე გახსნა'),
-          el('a', { class: 'chip', href: 'https://www.google.com/search?q=' + encodeURIComponent(state.query), target: '_blank', rel: 'noopener' }, 'Google-ზე გახსნა'))));
+          el('a', { class: 'chip', href: 'https://www.google.com/search?q=' + encodeURIComponent(state.query) + '&safe=off&num=20', target: '_blank', rel: 'noopener' }, 'Google-ზე გახსნა'))));
     return;
   }
 
@@ -151,18 +151,11 @@ function renderResults() {
   const metas = el('div', { class: 'result-meta' },
     el('strong', {}, String(items.length)),
     ' შედეგი',
-    ...(enginesLabel().length ? [' · ', el('span', {}, enginesLabel().join(' · '))] : []),
     el('span', { style: 'margin-left:auto' }, '🛡️ ' + (shieldOn ? 'დაცვა ჩართული' : 'დაცვა გამორთული')),
     blockedCount ? el('span', { class: 'badge' }, '⛔ ' + blockedCount) : null);
 
   const rows = items.map(r => renderResult(r, list, shieldOn));
   out.replaceChildren(metas, el('div', { class: 'result-list' }, ...rows));
-}
-
-function enginesLabel() {
-  const names = { ddg: 'DuckDuckGo', bing: 'Bing', wiki: 'Wikipedia', direct: 'მისამართი' };
-  const ok = state.engineInfo.filter(e => e.ok && e.count).map(e => names[e.id] || e.id);
-  return ok;
 }
 
 /* site icon: the site's real favicon, with the host's first letter as a fallback
@@ -207,9 +200,10 @@ function renderResult(r, list, shieldOn) {
     'data-open': r.url,
   }, r.title || r.url);
 
-  const actions = el('div', { class: 'res-actions' },
-    el('button', { class: 'mini', type: 'button', 'data-reader': r.url }, '🛡️ დაცული გახსნა'),
-    el('button', { class: 'mini', type: 'button', 'data-direct': r.url }, 'პირდაპირ ↗'));
+  const canBypass = !settings().strict;
+  const actions = el('div', { class: 'res-actions' });
+  actions.append(el('button', { class: 'mini', type: 'button', 'data-reader': r.url }, '🛡️ დაცული გახსნა'));
+  if (canBypass) actions.append(el('button', { class: 'mini', type: 'button', 'data-direct': r.url }, 'პირდაპირ ↗'));
 
   const body = el('div', {},
     title,
@@ -227,7 +221,8 @@ function renderResult(r, list, shieldOn) {
     chooseOpen(r);
   });
   actions.querySelector('[data-reader]').addEventListener('click', () => openSmart(r.url));
-  actions.querySelector('[data-direct]').addEventListener('click', () => {
+  const directBtn = actions.querySelector('[data-direct]');
+  if (directBtn) directBtn.addEventListener('click', () => {
     if (blocked && settings().warn) {
       if (!confirm(`⛔ ${host || r.url} ბლოკავს AdGuard წესი:\n${(verdict.rules || []).join('\n') || verdict.reason}\n\nმაინც გავხსნათ ჩვეულებრივ ბრაუზერში?`)) return;
     }
@@ -244,11 +239,19 @@ function chooseOpen(r) {
   const host = siteKey(r.url);
   const verdict = (settings().shield && (state.list || blockList()).check(r.url, { pageUrl: location.href })) || { blocked: false };
 
-  if (settings().shieldFirst && readability[host] === false) { openDirect(r.url); return; }
+  if (settings().shieldFirst && readability[host] === false && !verdict.blocked) { openSmart(r.url); return; }
 
-  if (verdict.blocked && settings().warn) {
-    const ok = confirm(`⛔ ${host || r.url} ბლოკავს AdGuard წესი:\n${(verdict.rules || []).join('\n') || verdict.reason}\n\nმაინც გავხსნათ?`);
-    if (!ok) return;
+  if (verdict.blocked) {
+    if (settings().strict) {
+      openReader(r.url);
+      return;
+    }
+    if (settings().warn) {
+      const ok = confirm(`⛔ ${host || r.url} ბლოკავს AdGuard წესი:\n${(verdict.rules || []).join('\n') || verdict.reason}\n\nმაინც გავხსნათ?`);
+      if (!ok) return;
+    }
+    openDirect(r.url, { quiet: true });
+    return;
   }
 
   if (!settings().shieldFirst) { openDirect(r.url); return; }
@@ -257,19 +260,136 @@ function chooseOpen(r) {
 
 /* ---------- reader ---------- */
 
+/* Everything the reader shows goes through the block list here: the page's own
+   address, its pictures and styles, every link, and every element whose id or
+   class the list hides. Nothing of the live site is opened unfiltered. */
+const RESOURCE_ATTRS = ['src', 'srcset', 'poster', 'background', 'data-src'];
+const RESOURCE_TYPES = {
+  img: 'image', picture: 'image', source: 'image', input: 'image',
+  iframe: 'subdocument', frame: 'subdocument', video: 'media', audio: 'media',
+  body: 'other', table: 'other', td: 'other',
+};
+
+/* the page itself is on the list: say so instead of rendering it */
+function blockedPageCard(url, verdict) {
+  const kids = [
+    el('div', { style: 'font-size:28px' }, '⛔'),
+    el('div', { style: 'margin-top:8px;font-weight:600' }, siteKey(url) + ' დაბლოკილია CleanGEO სიით'),
+    el('div', { style: 'margin-top:6px;opacity:.8' }, (verdict.rules || []).join('\n') || verdict.reason || ''),
+  ];
+  if (!settings().strict) {
+    kids.push(el('div', { style: 'margin-top:12px' },
+      el('button', { class: 'mini', type: 'button', onclick: () => openDirect(url) }, 'მაინც გავხსნა ↗')));
+  }
+  return el('div', { class: 'empty' }, ...kids);
+}
+
+/* hide the elements the list targets and take away every resource it blocks,
+   then report what was stopped so the reader can show it */
+function filterReaderDom(doc, pageUrl, list) {
+  const report = { elements: 0, resources: 0, rules: [], css: [] };
+  const pending = report.css;
+  const shield = settings().shield;
+  const addRule = (r) => { if (r && !report.rules.includes(r)) report.rules.push(r); };
+  const abs = (raw) => { try { return new URL(raw, pageUrl).href; } catch (e) { return raw; } };
+
+  if (shield && settings().cosmetic) {
+    for (const css of list.cosmeticFor(pageUrl)) {
+      const parts = splitCssRule(css);
+      let hits = [];
+      if (parts) {
+        for (const sel of parts.selectors) {
+          try { hits.push(...doc.querySelectorAll(sel)); } catch (e) { hits = []; break; }
+        }
+      }
+      if (hits.length) {
+        // the fragment is still detached, so isConnected is false for every hit:
+        // detach from the parent instead
+        const unique = [...new Set(hits)];
+        let removed = 0;
+        for (const node of unique) {
+          if (node.parentNode) { node.parentNode.removeChild(node); removed++; }
+        }
+        report.elements += removed;
+        addRule(css);
+      } else {
+        // selector the DOM query cannot express (:has, :not chains): keep the
+        // rule as CSS, so the element is at least hidden
+        pending.push(css);
+      }
+    }
+  }
+  report.css = pending;
+
+  if (!shield) return report;
+  const nodes = doc.body ? [doc.body, ...doc.body.querySelectorAll('*')] : [...doc.querySelectorAll('*')];
+  for (const node of nodes) {
+    // the request a page makes for its own pictures is a subresource request,
+    // so $image / $subdocument rules apply to it exactly as they would live
+    const type = RESOURCE_TYPES[node.tagName.toLowerCase()] || 'other';
+    for (const attrName of RESOURCE_ATTRS) {
+      const raw = node.getAttribute(attrName);
+      if (!raw || !raw.trim()) continue;
+      const candidates = attrName === 'srcset'
+        ? raw.split(',').map(part => part.trim().split(/\s+/)[0]).filter(Boolean)
+        : [raw];
+      const blocked = candidates.some(candidate => {
+        if (/^(data|javascript|about):/i.test(candidate)) return false;
+        const v = list.check(abs(candidate), { pageUrl, type });
+        if (v.blocked) { addRule((v.rules || [])[0]); return true; }
+        return false;
+      });
+      if (blocked) { node.removeAttribute(attrName); report.resources++; }
+    }
+  }
+  return report;
+}
+
 /* remember per host whether the protected reader can actually reach the site,
    so a site it cannot read opens in the normal browser instead of a dead end */
 const readability = Object.create(null);
-function openDirect(url) {
+/* Direct open leaves the list behind: it is the explicit opt-out, never
+   something the app does on its own — and in strict mode it does not happen at
+   all, the list stays in charge. */
+function openDirect(url, { quiet = false } = {}) {
+  if (settings().strict) {
+    toast('მკაცრი რეჟიმი: მხოლოდ დაცული გახსნა');
+    openReader(url);
+    return;
+  }
+  if (!quiet && settings().shield && settings().warn) {
+    const ok = confirm(`⚠️ ${siteKey(url) || url}\n\nგვერდი გაიხსნება ფილტრის გარეშე — ბლოკ-სია ვერ იმუშავებს.\nგავხსნათ მაინც?`);
+    if (!ok) return;
+  }
   const w = window.open(url, '_blank', 'noopener');
   // async paths (probe, reader failure) can lose the popup gesture — navigate in place then
   if (!w) location.href = url;
 }
 
-/* cosmetic rules from the block list, active only while the reader is open */
+/* split "a, b > c{display:none}" into its selector list and declaration */
+function splitCssRule(css) {
+  const text = String(css);
+  const open = text.lastIndexOf('{');
+  if (open < 0) return null;
+  const selectors = text.slice(0, open).split(',').map(s => s.trim()).filter(Boolean);
+  const body = text.slice(open);
+  if (!selectors.length) return null;
+  return { selectors, body };
+}
+
+/* the same rule, limited to what the reader renders */
+function scopeToReader(css) {
+  const parts = splitCssRule(css);
+  if (!parts) return null;
+  return parts.selectors.map(sel => '#readerBody ' + sel).join(', ') + parts.body;
+}
+
+/* cosmetic rules that cannot be expressed as a DOM query are applied as CSS,
+   scoped to the reader so they can never touch the app's own interface */
 function applyReaderCss(rules) {
   let style = document.getElementById('cgReaderCss');
-  if (!rules || !rules.length) {
+  const scoped = (rules || []).map(scopeToReader).filter(Boolean);
+  if (!scoped.length) {
     if (style) style.remove();
     return;
   }
@@ -278,69 +398,100 @@ function applyReaderCss(rules) {
     style.id = 'cgReaderCss';
     document.head.appendChild(style);
   }
-  style.textContent = rules.join('\n');
+  style.textContent = scoped.join('\n');
 }
 
+/* one reader at a time: a second open (a fast second click) must not render
+   over the page that is already loading, nor clear its shield count */
+let readerToken = 0;
+
 async function openReader(url) {
+  const token = ++readerToken;
   const reader = $('#reader');
   const body = $('#readerBody');
+  const badge = $('#readerBlocked');
   body.replaceChildren(el('div', { class: 'empty' }, 'იტვირთება…'));
+  if (badge) { badge.hidden = true; badge.textContent = ''; badge.title = ''; }
   $('#readerTitle').textContent = siteKey(url);
   $('#readerUrl').textContent = url;
-  $('#readerOpen').onclick = () => window.open(url, '_blank', 'noopener');
+  // the ↗ button leaves the filtered view: same explicit confirmation as any
+  // other unfiltered open
+  $('#readerOpen').onclick = () => openDirect(url);
   reader.hidden = false;
   document.body.style.overflow = 'hidden';
 
   const list = state.list || blockList();
+  // the page's own address is checked first: a blocked site never renders
+  const pageVerdict = settings().shield ? list.check(url, { pageUrl: url }) : { blocked: false };
+  if (pageVerdict.blocked && !pageVerdict.allowedBy) {
+    body.replaceChildren(blockedPageCard(url, pageVerdict));
+    return;
+  }
 
   try {
     const page = await fetchReadable(url);
+    if (token !== readerToken) return;
     readability[siteKey(url)] = true;
     $('#readerTitle').textContent = page.title;
     const doc = el('div', { class: 'doc' });
     doc.innerHTML = page.html;
-    // the list's cosmetic rules apply to the rendered page as a stylesheet
-    const css = settings().cosmetic ? list.cosmeticFor(url) : [];
+
+    // every element the list targets, and every resource it blocks, is dealt
+    // with before anything is attached to the document
+    const report = filterReaderDom(doc, url, list);
     body.replaceChildren();
-    applyReaderCss(css);
+    applyReaderCss(report.css);
     body.appendChild(doc);
+    if (badge && settings().shield && (report.elements || report.resources)) {
+      badge.hidden = false;
+      badge.textContent = `🛡️ −${report.elements + report.resources}`;
+      badge.title = `${report.elements} ელემენტი, ${report.resources} რესურსი\n` + report.rules.slice(0, 6).join('\n');
+    }
     const sel = getSelection();
     if (sel) sel.removeAllRanges();
     doc.querySelectorAll('a[href]').forEach(a => {
       const href = a.getAttribute('href');
       if (!href || !/^https?:/i.test(href)) { a.removeAttribute('href'); return; }
       a.removeAttribute('target');
+      // a link whose target the list blocks is shown as such, not offered
+      const verdict = settings().shield ? list.check(href, { pageUrl: url }) : { blocked: false };
+      if (verdict.blocked && !verdict.allowedBy) {
+        a.setAttribute('data-cg-blocked', (verdict.rules || []).join(' ') || verdict.reason || 'blocked');
+        a.setAttribute('title', '⛔ ბლოკავს AdGuard წესი: ' + ((verdict.rules || [])[0] || verdict.reason || ''));
+        a.classList.add('cg-blocked-link');
+      }
       a.addEventListener('click', (ev) => {
         ev.preventDefault();
-        const v = list.check(href, { pageUrl: url });
-        if (v.blocked && settings().warn) {
-          if (!confirm(`⛔ ${siteKey(href)} ბლოკავს AdGuard წესი: ${(v.rules || []).join(', ') || v.reason}. გავხსნათ?`)) return;
+        if (verdict.blocked) {
+          if (settings().warn && !confirm(`⛔ ${siteKey(href)} ბლოკავს AdGuard წესი: ${(verdict.rules || []).join(', ') || verdict.reason}. გავხსნათ?`)) return;
+          openDirect(href, { quiet: true });
+          return;
         }
-        if (readability[siteKey(href)] === false) { window.open(href, '_blank', 'noopener'); return; }
         openReader(href);
       });
     });
     body.scrollTop = 0;
-    if (!page.text || page.text.length < 120) {
-      readability[siteKey(url)] = false;
-      closeReader();
-      const w = window.open(url, '_blank', 'noopener');
-      if (!w) location.href = url;
-    }
+    if (!page.text || page.text.length < 120) throw new Error('გვერდის ტექსტი ვერ ამოიკითხა');
   } catch (e) {
+    if (token !== readerToken) return;
     const host = siteKey(url);
     readability[host] = false;
-    // no error wall and no protection text: continue in a normal browser tab,
-    // and fall back to navigating this tab if the popup is blocked
-    body.replaceChildren(
-      el('div', { class: 'empty' }, 'იხსნება ჩვეულებრივ ბრაუზერში…',
-        el('div', { style: 'margin-top:10px' },
-          el('button', { class: 'mini', type: 'button', onclick: () => { window.open(url, '_blank', 'noopener'); } }, 'გახსნა ↗'))));
-    setTimeout(() => {
-      closeReader();
-      const w = window.open(url, '_blank', 'noopener');
-      if (!w) location.href = url;
-    }, 350);
+    // never hand the raw site over silently: say the page could not be read
+    // in the filtered view and let the choice be explicit
+    const kids = [
+      el('div', {}, 'გვერდი დაცულ რეჟიმში ვერ ჩაიტვირთა.'),
+      el('div', { style: 'margin-top:6px;opacity:.75;font-size:13px' }, 'სკრიპტების გარეშე ეს გვერდი არ იხსნება.'),
+      el('div', { style: 'margin-top:10px;display:flex;gap:8px;justify-content:center' },
+        el('button', { class: 'mini', type: 'button', onclick: () => openReader(url) }, '🔄 კიდევ ცადე')),
+    ];
+    if (!settings().strict) {
+      kids[kids.length - 1].append(
+        el('button', { class: 'mini', type: 'button', onclick: () => openDirect(url) }, 'პირდაპირ ↗'));
+    } else {
+      kids.push(el('div', { style: 'margin-top:10px;opacity:.7;font-size:12px' },
+        'მკაცრი რეჟიმი ჩართულია — ფილტრის გარეშე გახსნა გამორთულია (პარამეტრებში).'));
+    }
+    body.replaceChildren(el('div', { class: 'empty' }, ...kids));
   }
 }
 
@@ -372,6 +523,7 @@ function syncControls() {
   $('#setShieldFirst').checked = s.shieldFirst;
   $('#setCosmetic').checked = s.cosmetic;
   $('#setWarn').checked = s.warn;
+  $('#setStrict').checked = s.strict;
   const a = autoConfig();
   $('#autoToggle').checked = a.enabled;
   $('#intervalSelect').value = String(a.interval);
@@ -486,7 +638,7 @@ function wire() {
     }
   });
 
-  for (const [id, key] of [['setShield', 'shield'], ['setShieldFirst', 'shieldFirst'], ['setCosmetic', 'cosmetic'], ['setWarn', 'warn']]) {
+  for (const [id, key] of [['setShield', 'shield'], ['setShieldFirst', 'shieldFirst'], ['setCosmetic', 'cosmetic'], ['setWarn', 'warn'], ['setStrict', 'strict']]) {
     $('#' + id).addEventListener('change', (e) => {
       saveSettings({ [key]: e.target.checked });
       refreshStatus();

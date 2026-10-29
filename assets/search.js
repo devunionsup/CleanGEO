@@ -9,11 +9,30 @@ const CACHE_PREFIX = 'cg.q.';
 const DDG_OFF = 'kp=-2&kpsb=-1';
 const TTL = 5 * 60 * 1000;
 
+/* Every search asks every engine at the same time. Each request carries that
+   engine's own "safe search off" switch in the URL, so no filter stays on for
+   this query whatever a cookie, an account or a saved profile says:
+
+     DuckDuckGo  kp=-2    (kpsb=-1 also hides its safe-search reminder)
+     Bing        adlt=off
+     Yahoo       vm=p      (yahoo answers yAdultF=Off; vm=off still means
+                            Moderate and vm=r means Strict, so p is the one)
+     Mojeek      safe=0
+
+   An engine that is slow, challenged or empty only drops its own results. */
+
 export const ENGINES = {
   ddg: { id: 'ddg', label: 'DuckDuckGo' },
   bing: { id: 'bing', label: 'Bing' },
+  yahoo: { id: 'yahoo', label: 'Yahoo' },
   wiki: { id: 'wiki', label: 'Wikipedia' },
 };
+
+/* every engine answers every search, in this order */
+export const ENGINE_ORDER = ['ddg', 'bing', 'yahoo', 'wiki'];
+
+const BING_OFF = 'adlt=off';
+const YAHOO_OFF = 'vm=p';
 
 function timeout(ms) {
   const c = new AbortController();
@@ -148,9 +167,9 @@ async function searchDdg(q) {
    to a Georgian query, so the bare URL — where Bing picks the market itself —
    goes first and the market-hinted forms are only a fallback. */
 const BING_TARGETS = [
-  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&adlt=off',
-  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q),
-  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&setlang=en&cc=GE&adlt=off',
+  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&' + BING_OFF,
+  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&' + BING_OFF + '&form=QBRE',
+  (q) => 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&setlang=en&cc=GE&' + BING_OFF,
 ];
 
 function parseBing(html) {
@@ -187,7 +206,49 @@ async function searchBing(q) {
   return [];
 }
 
-/* ---------- Wikipedia (direct CORS) ---------- */
+/* ---------- Yahoo (Bing's index, Yahoo's own safe-search switch) ---------- */
+function decodeYahooLink(href) {
+  try {
+    const m = href.match(/\/RU=([^/]+)\/RK=/);
+    if (m) return decodeURIComponent(m[1]);
+    if (href.startsWith('//')) return 'https:' + href;
+    return href;
+  } catch (e) {
+    return href;
+  }
+}
+
+function hostOf(href) {
+  try { return new URL(href).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
+}
+
+async function searchYahoo(q) {
+  const target = 'https://search.yahoo.com/search?p=' + encodeURIComponent(q) +
+    '&n=20&ei=UTF-8&fr=yfp-t&' + YAHOO_OFF;
+  const html = await viaJina(target, { html: true });
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out = [];
+  for (const a of doc.querySelectorAll('div.compTitle a[href*="/RU="]')) {
+    const href = decodeYahooLink(a.getAttribute('href') || '');
+    if (!/^https?:\/\//i.test(href)) continue;
+    const host = hostOf(href);
+    if (!host || /(^|\.)yahoo\.com$/i.test(host)) continue;
+    const h3 = a.querySelector('h3');
+    const block = a.closest('div.dd') || a.closest('li');
+    const p = block && (block.querySelector('.compText p') || block.querySelector('p'));
+    out.push({
+      title: clean(h3 ? h3.textContent : a.textContent) || href,
+      url: href,
+      snippet: p ? clean(p.textContent) : '',
+      engine: 'yahoo',
+      shown: host,
+    });
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
+/* ---------- Wikipedia (direct CORS, own API — no filtering to switch off) ---------- */
 async function searchWiki(q) {
   const lang = isGeorgian(q) ? 'ka' : 'en';
   const url = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=4&srprop=snippet&format=json&origin=*`;
@@ -204,6 +265,13 @@ async function searchWiki(q) {
     }));
   } finally { t.done(); }
 }
+
+const SEARCHERS = {
+  ddg: searchDdg,
+  bing: searchBing,
+  yahoo: searchYahoo,
+  wiki: searchWiki,
+};
 
 function dedupe(results) {
   const seen = new Set();
@@ -222,35 +290,34 @@ function dedupe(results) {
 }
 
 /* ---------- public API ---------- */
-export async function webSearch(query, { engines = ['ddg', 'bing'] } = {}) {
+export async function webSearch(query, { engines = ENGINE_ORDER } = {}) {
   const q = clean(query);
   if (!q) return { query: q, results: [], engines: [], direct: null };
 
-  const cached = cacheGet('w:' + q + ':' + engines.join(','));
+  const order = ENGINE_ORDER.filter(id => engines.includes(id));
+  const cached = cacheGet('w:' + q + ':' + order.join(','));
   if (cached) return cached;
 
   const direct = looksLikeUrl(q);
-  const tasks = [];
-  const order = engines.includes('ddg') ? ['ddg', 'bing'] : ['bing'];
 
-  for (const id of order) {
-    const fn = id === 'ddg' ? searchDdg : searchBing;
-    tasks.push(
-      fn(q).then(rs => ({ id, ok: true, rs })).catch(e => ({ id, ok: false, error: String(e.message || e) }))
-    );
-  }
-  tasks.push(searchWiki(q).then(rs => ({ id: 'wiki', ok: true, rs })).catch(() => ({ id: 'wiki', ok: false, rs: [] })));
-
-  const settled = await Promise.all(tasks);
+  // every engine at once — a slow or challenged one loses only its own results
+  const settled = await Promise.all(order.map(id =>
+    (SEARCHERS[id] || searchBing)(q)
+      .then(rs => ({ id, ok: true, rs }))
+      .catch(e => ({ id, ok: false, rs: [], error: String(e.message || e) }))
+  ));
 
   let results = [];
   const engineInfo = [];
   for (const s of settled) {
     engineInfo.push({ id: s.id, ok: s.ok, count: s.rs?.length || 0 });
-    if (s.rs?.length) {
-      // main engines first, wikipedia only supplements
-      results = results.concat(s.rs.map(r => ({ ...r, source: s.id })));
-    }
+  }
+
+  // interleave, so every engine's best hits are near the top instead of one
+  // engine's whole list coming first
+  const buckets = settled.filter(s => s.rs?.length).map(s => s.rs.map(r => ({ ...r, source: s.id })));
+  for (let i = 0; buckets.some(b => i < b.length); i++) {
+    for (const b of buckets) if (i < b.length) results.push(b[i]);
   }
 
   if (direct) {
@@ -266,10 +333,9 @@ export async function webSearch(query, { engines = ['ddg', 'bing'] } = {}) {
 
   results = dedupe(results);
 
-  const mainFailed = !results.some(r => r.source === 'ddg' || r.source === 'bing');
+  const mainFailed = !results.some(r => r.source && r.source !== 'direct');
 
-  // put wikipedia "about" card right after the direct hit
   const value = { query: q, results, engines: engineInfo, direct, mainFailed, at: Date.now() };
-  if (results.length) cacheSet('w:' + q + ':' + engines.join(','), value);
+  if (results.length) cacheSet('w:' + q + ':' + order.join(','), value);
   return value;
 }

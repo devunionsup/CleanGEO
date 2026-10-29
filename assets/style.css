@@ -135,6 +135,12 @@ body:not(.home) .hero{display:none}
 }
 .res.blocked{opacity:.62}
 .res.blocked .res-title{color:var(--muted);text-decoration:line-through}
+/* links inside the reader that the block list matches */
+.doc a.cg-blocked-link{
+  color:var(--muted);text-decoration:line-through;
+  text-decoration-color:color-mix(in srgb,var(--danger) 70%,transparent);
+}
+.doc a.cg-blocked-link::after{content:' ⛔';font-size:11px}
 
 .notice{
   display:flex;flex-wrap:wrap;align-items:center;gap:10px;

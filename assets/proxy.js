@@ -3,6 +3,7 @@
    Nothing of the original site executes, so its trackers and malware cannot. */
 
 const READER = 'https://r.jina.ai/';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 const ttl = 10 * 60 * 1000;
 const memory = new Map();
@@ -22,7 +23,9 @@ function looksLikeChallenge(text, title) {
   return false;
 }
 
-export function sanitize(doc) {
+export function sanitize(doc, baseUrl) {
+  const base = baseUrl || doc.baseURI || '';
+  const resolve = (v) => { try { return new URL(v, base).href; } catch (e) { return ''; } };
   const kill = ['script', 'noscript', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet',
     'form', 'input', 'button', 'select', 'textarea', 'video', 'audio', 'source', 'track',
     'svg', 'canvas', 'link', 'meta', 'base', 'template', 'nav', 'aside', 'footer', 'header',
@@ -37,8 +40,14 @@ export function sanitize(doc) {
       if (n.startsWith('on') || n === 'srcdoc' || n === 'ping') el.removeAttribute(attr.name);
       else if (n === 'style' && /url\s*\(|expression|javascript:/i.test(v)) el.removeAttribute(attr.name);
       else if ((n === 'src' || n === 'srcset' || n === 'poster' || n === 'background' ||
-        n === 'action' || n === 'data-src' || n === 'formaction') && !/^(https?:|data:image\/)/i.test(v)) {
-        el.removeAttribute(attr.name);
+        n === 'action' || n === 'data-src' || n === 'formaction')) {
+        // relative resources are resolved against the page, not dropped: the
+        // block list gets an absolute URL to judge
+        const parts = n === 'srcset' ? v.split(',').map(p => p.trim()).filter(Boolean) : [v];
+        const resolved = parts.map(p => resolve(p.split(/\s+/)[0])).filter(Boolean);
+        if (!resolved.length || resolved.some(u => !/^(https?:|data:image\/)/i.test(u))) el.removeAttribute(attr.name);
+        else if (n === 'srcset') el.setAttribute(n, resolved.join(', '));
+        else el.setAttribute(n, resolved[0]);
       } else if (n === 'href' && /^javascript:/i.test(v.trim())) el.removeAttribute(attr.name);
     }
   });
@@ -152,8 +161,10 @@ export async function fetchReadable(url, { timeoutMs = 18000 } = {}) {
       if (!/Attention Required! \| Cloudflare|Just a moment\.\.\./i.test(raw.slice(0, 800))) {
         const doc = new DOMParser().parseFromString(raw, 'text/html');
         const title = (doc.title || '').trim() || url;
-        sanitize(doc);
+        sanitize(doc, url);
         absolutize(doc, url);
+        // the page must be able to see what the list hides, so keep its classes,
+        // ids and inline styles from here on; the app removes what the list targets
         const src = contentRoot(doc);
         let html = src ? src.innerHTML : '';
         const text = src ? (src.textContent || '').replace(/\s+/g, ' ').trim() : '';
@@ -167,7 +178,33 @@ export async function fetchReadable(url, { timeoutMs = 18000 } = {}) {
     }
   } catch (e) { lastErr = e; console.warn('CleanGEO reader html route:', e && e.message); }
 
-  // 2) Markdown fallback — pure text, even safer
+  // 2) The page's own HTML through a CORS proxy: the real markup, so the
+  //    block list still sees what is there. Scripts are stripped either way.
+  try {
+    const c = ctrl(15000);
+    const r = await fetch(CORS_PROXY + encodeURIComponent(url), { signal: c.signal });
+    c.done();
+    if (r.ok) {
+      const raw = await r.text();
+      if (raw && !/Just a moment\.\.\.|Attention Required! \| Cloudflare|cf-browser-verification/i.test(raw.slice(0, 1500))) {
+        const doc = new DOMParser().parseFromString(raw, 'text/html');
+        const title = (doc.title || '').trim() || url;
+        sanitize(doc, url);
+        absolutize(doc, url);
+        const src = contentRoot(doc);
+        const html = src ? src.innerHTML : '';
+        const text = src ? (src.textContent || '').replace(/\s+/g, ' ').trim() : '';
+        if (text.length > 60 && !looksLikeChallenge(text, title)) {
+          const value = { title, html, text, url, via: 'html' };
+          memory.set(url, { at: Date.now(), value });
+          return value;
+        }
+        if (looksLikeChallenge(text, title)) lastErr = new Error('საიტი იცავს თავს ბოტებისგან');
+      }
+    }
+  } catch (e) { lastErr = e; console.warn('CleanGEO reader direct route:', e && e.message); }
+
+  // 3) Markdown fallback — pure text, even safer
   try {
     const c = ctrl(timeoutMs);
     const r = await fetch(READER + encodeURIComponent(url), { signal: c.signal });

@@ -2,79 +2,1896 @@
 <html lang="ka">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CleanGEO — რეკლამის ბლოკირების სია საქართველოსთვის</title>
-<meta name="description" content="CleanGEO — ქართული საიტებისთვის განკუთვნილი რეკლამისა და ვირუსული ბმულების ბლოკირების სია.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f8fc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1020" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CleanGEO">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>CleanGEO — უსაფრთხო საძიებო სისტემა</title>
+<meta name="description" content="CleanGEO — საძიებო სისტემა, რომელიც ბლოკავს რეკლამებს, თვალთვალსა და საშიშ საიტებს. მუშაობს ყველა მოწყობილობაზე.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <style>
+/* CleanGEO — mobile-first styles */
+:root{
+  --bg:#f6f8fc; --bg2:#ffffff; --fg:#111827; --muted:#5b6478; --line:#e2e7f0;
+  --accent:#2f6bff; --accent2:#12b886; --danger:#e03131; --warn:#f08c00;
+  --card:#ffffff; --chip:#eef2fb; --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
   :root{
-    --bg:#0b1020;--card:#141c33;--line:#25304f;--fg:#eef2ff;--muted:#9aa7c7;
-    --accent:#4f8cff;--accent2:#25d0a2;
+    --bg:#0b1020; --bg2:#111830; --fg:#eef2ff; --muted:#98a4c4; --line:#243052;
+    --accent:#5b8cff; --accent2:#2ed3a6; --danger:#ff6b6b; --warn:#ffb454;
+    --card:#121a31; --chip:#1a2440; --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
   }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Noto Sans Georgian,sans-serif;
-    background:radial-gradient(1200px 600px at 20% -10%,#1b2a55 0%,var(--bg) 55%);color:var(--fg);line-height:1.55}
-  .wrap{max-width:820px;margin:0 auto;padding:32px 20px 64px}
-  header{display:flex;align-items:center;gap:12px;margin-bottom:40px}
-  .logo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:800;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06101f}
-  h1{font-size:34px;line-height:1.15;margin:0 0 12px;letter-spacing:-.5px}
-  .lead{color:var(--muted);font-size:17px;margin:0 0 28px}
-  .btns{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:40px}
-  a.btn{display:inline-block;padding:13px 22px;border-radius:12px;text-decoration:none;font-weight:600;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#06101f}
-  a.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px}
-  h2{font-size:18px;margin:0 0 12px}
-  ul{margin:0;padding-left:20px;color:var(--muted)}
-  li{margin:6px 0}
-  code{background:#0a1226;border:1px solid var(--line);border-radius:8px;padding:2px 7px;
-    font-size:13px;word-break:break-all;color:#cfe0ff}
-  ol{color:var(--muted);padding-left:20px}
-  ol code{display:inline-block;margin-top:4px}
-  footer{color:var(--muted);font-size:13px;margin-top:34px;border-top:1px solid var(--line);padding-top:18px}
-  footer a{color:#9db8ff}
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  min-height:100dvh; background:var(--bg); color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Georgian","Helvetica Neue",Arial,sans-serif;
+  line-height:1.55; -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+img{max-width:100%}
+a{color:var(--accent);text-decoration:none}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky; top:0; z-index:30;
+  display:flex; align-items:center; gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:saturate(1.4) blur(14px);
+  -webkit-backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:9px;color:var(--fg);font-weight:750;letter-spacing:-.2px;font-size:16px}
+.mark{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  font-size:12px;font-weight:800;letter-spacing:.3px;color:#04121f;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:8px}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--chip); border:1px solid var(--line); color:var(--fg);
+  border-radius:999px; padding:8px 12px; font-size:12.5px; min-height:36px;
+  cursor:pointer;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+.dot.ok{background:var(--accent2);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent2) 22%,transparent)}
+.dot.err{background:var(--danger)}
+.dot.busy{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.icon-btn{
+  width:40px;height:40px;min-height:40px;border-radius:12px;border:1px solid var(--line);
+  background:var(--card);display:grid;place-items:center;cursor:pointer;font-size:17px;
+}
+
+/* ---------- layout ---------- */
+main{max-width:820px;margin:0 auto;padding:18px 14px 40px}
+body.home main{padding-top:min(14vh,110px)}
+
+/* ---------- search ---------- */
+.searchwrap{position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:20;padding:6px 0;background:linear-gradient(var(--bg) 70%,transparent)}
+body.home .searchwrap{position:static;background:none;padding:0}
+.searchbox{
+  display:flex;align-items:center;gap:8px;
+  background:var(--card);border:1px solid var(--line);border-radius:999px;
+  box-shadow:var(--shadow); padding:6px 6px 6px 16px;
+  transition:box-shadow .18s ease, border-color .18s ease;
+}
+.searchbox:focus-within{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent),var(--shadow)}
+.searchbox input{
+  flex:1 1 auto;min-width:0;border:0;background:transparent;color:var(--fg);
+  font-size:16px;padding:12px 0;outline:none;
+}
+.searchbox input::placeholder{color:var(--muted)}
+.searchbox button{
+  flex:0 0 auto;width:44px;height:44px;border-radius:999px;border:0;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121f;
+  font-size:18px;display:grid;place-items:center;
+}
+body.home .searchbox{padding:10px 10px 10px 18px}
+body.home .searchbox input{font-size:17px;padding:14px 0}
+body.home .searchbox button{width:48px;height:48px}
+
+.hero{text-align:center;margin:0 0 26px}
+.hero h1{
+  font-size:clamp(38px,11vw,64px);line-height:1.02;margin:0 0 12px;letter-spacing:-1.5px;
+  background:linear-gradient(120deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.hero p{color:var(--muted);margin:0 auto;max-width:34ch;font-size:15px}
+body:not(.home) .hero{display:none}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:18px 0 0}
+.chips .chip{background:var(--card)}
+.chips button{padding:9px 13px;font-size:13px;min-height:38px}
+
+.home-note{margin:26px auto 0;max-width:52ch;text-align:center;color:var(--muted);font-size:13px}
+
+/* ---------- results ---------- */
+.result-meta{display:flex;flex-wrap:wrap;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;margin:12px 2px 6px}
+.result-meta strong{color:var(--fg);font-weight:650}
+.result-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.res{
+  display:grid;grid-template-columns:36px 1fr;gap:12px;
+  padding:14px 12px;border-radius:14px;border:1px solid transparent;
+}
+.res:hover{background:var(--card);border-color:var(--line)}
+.avatar{
+  width:36px;height:36px;border-radius:10px;display:grid;place-items:center;
+  font-weight:700;font-size:15px;color:#06121f;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 75%,#fff),color-mix(in srgb,var(--accent2) 75%,#fff));
+  user-select:none;
+}
+.res-title{
+  display:inline-block;font-size:17px;line-height:1.35;color:var(--accent);
+  font-weight:600;cursor:pointer;word-break:break-word;
+}
+.res-title:hover{text-decoration:underline}
+.res-url{font-size:12.5px;color:var(--muted);margin:2px 0 4px;word-break:break-all}
+.res-snippet{margin:0;color:var(--fg);font-size:14px;opacity:.92;overflow-wrap:anywhere}
+.res-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.mini{
+  display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);
+  color:var(--fg);border-radius:999px;padding:7px 12px;font-size:12.5px;min-height:34px;cursor:pointer;
+}
+.mini:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px;font-size:12px;
+  background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 32%,transparent);
+}
+.res.blocked{opacity:.62}
+.res.blocked .res-title{color:var(--muted);text-decoration:line-through}
+
+.notice{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  background:color-mix(in srgb,var(--accent2) 10%,var(--card));
+  border:1px solid color-mix(in srgb,var(--accent2) 32%,var(--line));
+  border-radius:12px;padding:12px 14px;font-size:13.5px;margin:10px 0;
+}
+.notice.warn{background:color-mix(in srgb,var(--warn) 12%,var(--card));border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+.notice button{margin-left:auto}
+
+.empty{text-align:center;color:var(--muted);padding:34px 10px;font-size:14px}
+.skel{height:64px;border-radius:14px;background:linear-gradient(90deg,var(--card),var(--chip),var(--card));background-size:220% 100%;animation:sh 1.2s infinite linear;margin:8px 0}
+@keyframes sh{to{background-position:-220% 0}}
+
+/* ---------- footer ---------- */
+.foot{
+  max-width:820px;margin:0 auto;padding:16px 14px calc(26px + env(safe-area-inset-bottom));
+  color:var(--muted);font-size:12.5px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  border-top:1px solid var(--line);
+}
+.foot a{color:var(--muted);text-decoration:underline}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font-size:12.5px;text-decoration:underline}
+
+/* ---------- reader ---------- */
+.reader{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column}
+.reader-head{
+  display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;
+  border-bottom:1px solid var(--line);background:var(--bg2);
+}
+.reader-head .url{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reader-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 16px calc(40px + env(safe-area-inset-bottom))}
+.reader-body .doc{max-width:720px;margin:0 auto;font-size:16.5px}
+.reader-body h1{font-size:26px;line-height:1.25;margin:0 0 14px}
+.reader-body h2{font-size:21px;margin:26px 0 10px}
+.reader-body h3{font-size:18px;margin:22px 0 8px}
+.reader-body p{margin:0 0 14px}
+.reader-body ul,.reader-body ol{padding-left:22px;margin:0 0 14px}
+.reader-body li{margin:5px 0}
+.reader-body blockquote{margin:0 0 14px;padding:8px 14px;border-left:3px solid var(--line);color:var(--muted)}
+.reader-body pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;overflow:auto;font-size:13px}
+.reader-body code{background:var(--chip);border-radius:6px;padding:1px 5px;font-size:.9em}
+.reader-body hr{border:0;border-top:1px solid var(--line);margin:22px 0}
+.reader-body a{word-break:break-word}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(4,10,24,.5);z-index:70;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;z-index:80;left:0;right:0;bottom:0;max-height:88dvh;overflow-y:auto;
+  background:var(--bg2);border-top-left-radius:20px;border-top-right-radius:20px;
+  border:1px solid var(--line);padding:16px 16px calc(26px + env(safe-area-inset-bottom));
+  transform:translateY(102%);transition:transform .24s ease;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.drawer.on{transform:translateY(0)}
+@media (min-width:760px){
+  .drawer{left:auto;right:18px;bottom:18px;width:430px;border-radius:20px;max-height:80dvh;transform:translateY(120%)}
+}
+.drawer-head{display:flex;align-items:center;gap:10px;position:sticky;top:-16px;background:var(--bg2);padding:4px 0 10px;margin-top:-4px;z-index:2}
+.drawer h2{font-size:16px;margin:18px 0 8px;letter-spacing:-.2px}
+.drawer h2:first-of-type{margin-top:2px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:18px}
+.stat span{font-size:11.5px;color:var(--muted)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.row:last-child{border-bottom:0}
+.row small{display:block;color:var(--muted);font-size:12px;font-weight:400}
+select,input.inp{
+  background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:10px;
+  padding:9px 10px;font-size:14px;min-height:40px;max-width:100%;
+}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121f;
+  border:0;border-radius:12px;padding:12px 16px;font-weight:650;font-size:14px;min-height:44px;cursor:pointer;
+}
+.btn.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line);font-weight:550}
+.btn:disabled{opacity:.6;cursor:default}
+.log{list-style:none;margin:0;padding:0;font-size:13px}
+.log li{padding:9px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+.log li b{color:var(--fg);font-weight:600}
+.log .plus{color:var(--accent2)}
+.log .minus{color:var(--danger)}
+.hint{font-size:12px;color:var(--muted);margin:8px 0 0}
+.toast{
+  position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--fg);color:var(--bg);border-radius:12px;padding:11px 16px;font-size:13.5px;z-index:120;
+  opacity:0;pointer-events:none;transition:opacity .2s, transform .2s;max-width:92vw;text-align:center;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:380px){
+  .res{grid-template-columns:30px 1fr;gap:9px;padding:12px 6px}
+  .avatar{width:30px;height:30px;border-radius:9px;font-size:13px}
+  .res-title{font-size:16px}
+  .topbar{padding-left:10px;padding-right:10px}
+  .brand span{font-size:15px}
+}
+
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <div class="logo">CG</div>
-    <strong>CleanGEO</strong>
-  </header>
+<body class="home">
 
-  <h1>სუფთა ინტერნეტი ქართული საიტებისთვის</h1>
-  <p class="lead">CleanGEO არის უფასო ფილტრების სია, რომელიც ბლოკავს კაზინოს რეკლამებს, popup-ებს,
-    გადამისამართებებსა და ვირუსულ ბმულებს ქართულ საიტებზე.</p>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="CleanGEO მთავარი">
+    <span class="mark" aria-hidden="true">CG</span>
+    <span>CleanGEO</span>
+  </a>
+  <div class="top-actions">
+    <button class="chip" id="shieldChip" type="button" title="ბლოკირების სტატუსი">
+      <span class="dot" id="shieldDot"></span>
+      <span id="shieldText">ფილტრი</span>
+    </button>
+    <button class="icon-btn" id="menuBtn" type="button" aria-label="პარამეტრები" aria-expanded="false">☰</button>
+  </div>
+</header>
 
-  <div class="btns">
-    <a class="btn" href="CleanGEO.txt">სიის ჩამოტვირთვა</a>
-    <a class="btn ghost" href="https://t.me/CleanGE0" target="_blank" rel="noopener">Telegram არხი</a>
+<main>
+  <div class="hero" id="hero">
+    <h1>CleanGEO</h1>
+    <p>უსაფრთხო საძიებო სისტემა — ბლოკავს რეკლამებს, თვალთვალსა და საშიშ დომენებს.</p>
   </div>
 
-  <div class="card">
-    <h2>რას ბლოკავს</h2>
-    <ul>
-      <li>კაზინოსა და betting-ის რეკლამები</li>
-      <li>popup და redirect ფანჯრები</li>
-      <li>ვირუსული და თაღლითური ბმულები (CDN, ყალბი სიახლეების საიტები)</li>
-      <li>მოძალადე მესამე მხარის ტრეკერები</li>
-    </ul>
+  <div class="searchwrap">
+    <form class="searchbox" id="searchForm" role="search" autocomplete="off">
+      <input id="q" name="q" type="search" inputmode="search" enterkeyhint="search"
+             placeholder="ძებნა ან მისამართი…" aria-label="ძებნა" spellcheck="false" autocapitalize="off">
+      <button type="submit" aria-label="ძებნა">⌕</button>
+    </form>
+    <div class="chips" id="quickChips" hidden></div>
   </div>
 
-  <div class="card">
-    <h2>როგორ დავამატო</h2>
-    <ol>
-      <li>გახსენი uBlock Origin → პარამეტრები → ფილტრების სიები</li>
-      <li>ჩასვი ეს მისამართი „Import“ ველში და დააჭირე „Apply changes“:</li>
-    </ol>
-    <p><code id="sub">https://raw.githubusercontent.com/devunionsup/CleanGEO/main/CleanGEO.txt</code></p>
-    <p class="lead" style="font-size:14px;margin:0">AdBlock / AdGuard-შიც იგივე ბმული მუშაობს.</p>
-  </div>
+  <section id="output" aria-live="polite"></section>
 
-  <footer>
-    ღია კოდი: <a href="https://github.com/devunionsup/CleanGEO">github.com/devunionsup/CleanGEO</a> ·
-    კონტაქტი: <a href="https://t.me/CleanGE0">@CleanGE0</a>
-  </footer>
+  <p class="home-note" id="homeNote">
+    შედეგზე დაჭერისას საიტი იხსნება დაცულ რეჟიმში — მისი სკრიპტები, ტრეკერები და რეკლამები არ მუშაობს.
+  </p>
+</main>
+
+<footer class="foot">
+  <span>სია: <a id="listLink" href="https://raw.githubusercontent.com/devunionsup/CleanGEO/main/CleanGEO.txt" target="_blank" rel="noopener">CleanGEO.txt</a></span>
+  <span>·</span>
+  <a href="https://t.me/CleanGE0" target="_blank" rel="noopener">Telegram</a>
+  <span>·</span>
+  <button class="linkbtn" id="aboutBtn" type="button">როგორ მუშაობს</button>
+</footer>
+
+<!-- reader -->
+<div class="reader" id="reader" hidden>
+  <div class="reader-head">
+    <button class="icon-btn" id="readerBack" type="button" aria-label="უკან">‹</button>
+    <div style="min-width:0;flex:1">
+      <div id="readerTitle" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+      <div class="url" id="readerUrl"></div>
+    </div>
+    <button class="icon-btn" id="readerOpen" type="button" aria-label="ორიგინალის გახსნა" title="ორიგინალის გახსნა">↗</button>
+  </div>
+  <div class="reader-body" id="readerBody"></div>
 </div>
+
+<!-- settings drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="პარამეტრები" aria-hidden="true">
+  <div class="drawer-head">
+    <strong style="font-size:16px">ფილტრი და პარამეტრები</strong>
+    <button class="icon-btn" id="drawerClose" type="button" aria-label="დახურვა" style="margin-left:auto">✕</button>
+  </div>
+
+  <div class="stat-grid" id="stats"></div>
+
+  <h2>ბლოკ-ლისტი</h2>
+  <div class="row">
+    <div>ავტომატური შემოწმება<small id="lastCheckText">—</small></div>
+    <input type="checkbox" id="autoToggle">
+  </div>
+  <div class="row">
+    <div>სიხშირე</div>
+    <select id="intervalSelect"></select>
+  </div>
+  <div class="row" style="border-bottom:0;padding-bottom:4px">
+    <div>წყარო<small id="sourceText"></small></div>
+  </div>
+  <input class="inp" id="sourceInput" style="width:100%" spellcheck="false" autocapitalize="off">
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn" id="checkNow" type="button" style="flex:1">ახლავე შემოწმება</button>
+    <button class="btn ghost" id="saveSource" type="button">შენახვა</button>
+  </div>
+  <p class="hint" id="updateHint"></p>
+
+  <h2>ბოლო ცვლილებები</h2>
+  <ul class="log" id="logList"></ul>
+
+  <h2>დაცვის რეჟიმი</h2>
+  <div class="row">
+    <div>საშიში ბმულების დაბლოკვა<small>საშიში საიტი არ გაიხსნება გაფრთხილების გარეშე</small></div>
+    <input type="checkbox" id="setShield">
+  </div>
+  <div class="row">
+    <div>დაცული რეჟიმი ნაგულისხმევად<small>ბმული იხსნება გაფილტრულად, სკრიპტების გარეშე</small></div>
+    <input type="checkbox" id="setShieldFirst">
+  </div>
+  <div class="row">
+    <div>რეკლამის ელემენტების დამალვა<small>სიის CSS წესებით</small></div>
+    <input type="checkbox" id="setCosmetic">
+  </div>
+  <div class="row">
+    <div>გაფრთხილება საშიშ საიტზე<small>სანამ გახსნის ღილაკს დააჭერთ</small></div>
+    <input type="checkbox" id="setWarn">
+  </div>
+
+  <h2>საკუთარი წესები</h2>
+  <textarea class="inp" id="extraRules" rows="4" style="width:100%;font-family:ui-monospace,monospace;font-size:13px"
+    placeholder="||example.com^&#10;example.com##.ad-banner"></textarea>
+  <p class="hint">თითო წესი ერთ ხაზზე — საჯარო სიის გვერდით მუშაობს და განახლებისას არ იშლება.</p>
+
+  <div style="margin-top:16px;display:flex;gap:8px">
+    <a class="btn ghost" href="CleanGEO.txt" target="_blank" rel="noopener" style="flex:1;text-decoration:none">სიის ნახვა</a>
+    <a class="btn ghost" href="https://t.me/CleanGE0" target="_blank" rel="noopener" style="flex:1;text-decoration:none">Telegram</a>
+  </div>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<noscript>
+  <div style="padding:24px;font-family:system-ui">
+    <h1>CleanGEO</h1>
+    <p>საიტის სამუშაოდ ჩართეთ JavaScript, ან გადმოწერეთ ბლოკ-ლისტი პირდაპირ:
+    <a href="https://raw.githubusercontent.com/devunionsup/CleanGEO/main/CleanGEO.txt">CleanGEO.txt</a></p>
+  </div>
+</noscript>
+
+<script>
+/* CleanGEO — generated by tools/build.py from assets/*.js.
+   Edit the sources, not this block, then re-run:  python tools/build.py */
+(function () {
+'use strict';
+/* ==== src: assets/blocklist.js ==== */
+/* CleanGEO — AdGuard/ABP filter-list engine
+   Supports: ||host^$options network rules, wildcards, cosmetic ##/$# rules,
+   domain scoping, and rule diffing between list versions. */
+
+const DEFAULT_SOURCE = 'https://raw.githubusercontent.com/devunionsup/CleanGEO/main/CleanGEO.txt';
+const LOCAL_SOURCE = './CleanGEO.txt';
+const PAGES_SOURCE = 'https://devunionsup.github.io/CleanGEO/CleanGEO.txt';
+const COMMIT_API = 'https://api.github.com/repos/devunionsup/CleanGEO/commits?path=CleanGEO.txt&per_page=1';
+
+const SEP = '[^\\w\\d._%-]';
+
+function esc(chark) {
+  return chark.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/* ---------- hashing ---------- */
+function hash(text) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i);
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+/* ---------- network rule -> regex ---------- */
+function patternToRegex(pattern) {
+  let host = false;
+  let p = pattern;
+  if (p.startsWith('||')) { host = true; p = p.slice(2); }
+  else if (p.startsWith('|')) { p = p.slice(1); }
+  let body = '';
+  for (const ch of p) {
+    if (ch === '*') body += '.*';
+    else if (ch === '^') body += SEP;
+    else body += esc(ch);
+  }
+  const src = host ? '^https?://([^/?#]*\\.)?' + body : body;
+  return new RegExp(src, 'i');
+}
+
+function ruleBody(rule) {
+  const i = rule.indexOf('$');
+  if (i > 0) return rule.slice(0, i);
+  return rule;
+}
+
+function extractDomain(pattern) {
+  if (!pattern.startsWith('||')) return null;
+  let p = pattern.slice(2);
+  if (p.includes('/')) return null;
+  p = p.replace(/^[*.\s]+/, '').replace(/[*^.\s]+$/, '');
+  if (!p || p.includes('*') || p.includes('^')) return null;
+  if (!/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i.test(p)) return null;
+  return p.toLowerCase();
+}
+
+const COSMETIC_SEPS = ['#$?#', '#$#', '#%#', '#@#', '#?#', '##'];
+
+function splitCosmetic(line) {
+  for (const sep of COSMETIC_SEPS) {
+    const i = line.indexOf(sep);
+    if (i >= 0 && (i > 0 || sep === '##')) {
+      const domains = line.slice(0, i);
+      if (i > 0 && !domains) continue;
+      return { domains, sep, body: line.slice(i + sep.length) };
+    }
+  }
+  return null;
+}
+
+function cssFromRuleBody(sep, body) {
+  let sel = body.trim();
+  if (!sel) return null;
+  if (sep === '#%#') return null; // scriptlets are not executed on the modern web build
+  if (sep === '#@#') return null;
+  if (sep === '#$#' || sep === '#$?#') {
+    const m = sel.match(/^(.+?)\s*\{(.*)\}$/s);
+    if (!m) return null;
+    sel = m[1].trim();
+    const decl = m[2].trim();
+    if (/remove\s*:\s*true/i.test(decl)) return sel + '{display:none!important}';
+    if (/display\s*:\s*none/i.test(decl)) return sel + '{display:none!important}';
+    return null;
+  }
+  // classic ## rule: hide the matching element
+  if (sel.endsWith(':remove()')) return sel.slice(0, -':remove()'.length).trim() + '{display:none!important}';
+  const styleM = sel.match(/^(.*):style\((.*)\)$/s);
+  if (styleM) return styleM[1].trim() + '{' + styleM[2].trim() + '}';
+  return sel + '{display:none!important}';
+}
+
+/* ---------- parse ---------- */
+function parseList(text) {
+  const net = [];           // {raw, pattern, regex, domain}
+  const cosmetic = new Map(); // domain -> [css]
+  const globalCosmetic = [];
+  const domains = new Set();        // hosts the list blocks outright
+  const cosmeticDomains = new Set(); // hosts the list only cleans up
+  const scriptlets = [];
+  const seenNet = new Set();
+  const seenCss = new Set();
+  const lines = String(text || '').split(/\r?\n/);
+  let rules = 0;
+
+  for (let raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith('!') || line.startsWith('#')) {
+      // '#' at col 0 that is not "##" is a comment in AdGuard lists
+      if (!(line.startsWith('##') || line.startsWith('#@#'))) continue;
+    }
+    if (line.startsWith('[')) continue;
+
+    const cos = splitCosmetic(line);
+    if (cos) {
+      const css = cssFromRuleBody(cos.sep, cos.body);
+      if (!css) {
+        if (cos.sep === '#%#') scriptlets.push(line);
+        continue;
+      }
+      if (seenCss.has(css)) continue;
+      seenCss.add(css);
+      const targets = cos.domains.replace(/^\|\|?/, '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!targets.length) { globalCosmetic.push(css); continue; }
+      for (const t of targets) {
+        if (t.startsWith('~')) continue;
+        const key = t.toLowerCase().replace(/^\*\.?/, '');
+        if (!key) { globalCosmetic.push(css); continue; }
+        if (!cosmetic.has(key)) cosmetic.set(key, []);
+        cosmetic.get(key).push(css);
+        cosmeticDomains.add(key);
+      }
+      rules++;
+      continue;
+    }
+
+    if (line.startsWith('@@')) continue; // exceptions: the public list has none, allowlist handled separately
+    if (!/^[|@*a-z0-9]+\b/i.test(line) && !line.startsWith('||')) continue;
+
+    const pattern = ruleBody(line);
+    if (!pattern || seenNet.has(pattern)) continue;
+    seenNet.add(pattern);
+    let regex = null;
+    try { regex = patternToRegex(pattern); } catch (e) { regex = null; }
+    if (!regex) continue;
+    const domain = extractDomain(pattern);
+    net.push({ raw: line, pattern, regex, domain });
+    if (domain) domains.add(domain);
+    rules++;
+  }
+
+  return {
+    net, cosmetic, globalCosmetic, domains, cosmeticDomains, scriptlets,
+    counts: {
+      rules,
+      network: net.length,
+      cosmetic: [...cosmetic.values()].reduce((a, b) => a + b.length, 0) + globalCosmetic.length,
+      domains: domains.size,
+      scriptlets: scriptlets.length,
+    },
+  };
+}
+
+/* ---------- rule key set for diffing ---------- */
+function ruleKeys(text) {
+  const set = new Set();
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith('!') || line.startsWith('[')) continue;
+    set.add(line);
+  }
+  return set;
+}
+
+function diffRules(oldText, newText) {
+  const a = ruleKeys(oldText);
+  const b = ruleKeys(newText);
+  const added = [...b].filter(x => !a.has(x));
+  const removed = [...a].filter(x => !b.has(x));
+  return { added, removed, unchanged: a.size - removed.length, total: b.size };
+}
+
+/* ---------- the matcher ---------- */
+class BlockList {
+  constructor(text = '', extra = '') {
+    this.text = text;
+    this.extra = extra;
+    this.build();
+  }
+
+  build() {
+    const parsed = parseList(this.text + '\n' + (this.extra || ''));
+    this.net = parsed.net;
+    this.cosmetic = parsed.cosmetic;
+    this.globalCosmetic = parsed.globalCosmetic;
+    this.domains = parsed.domains;
+    this.cosmeticDomains = parsed.cosmeticDomains;
+    this.scriptlets = parsed.scriptlets;
+    this.counts = parsed.counts;
+    this.hash = hash(this.text);
+    this.regexes = this.net.map(r => r.regex);
+  }
+
+  /* Does this exact URL get blocked by a network rule? */
+  matchUrl(url) {
+    const hits = [];
+    const u = String(url || '');
+    for (const rule of this.net) {
+      if (rule.regex.test(u)) hits.push(rule.raw);
+    }
+    return { blocked: hits.length > 0, rules: hits };
+  }
+
+  /* Is this site itself on the list (host or parent host)? */
+  matchHost(url) {
+    let host = '';
+    try { host = new URL(url).hostname.toLowerCase(); } catch (e) { return { blocked: false, domain: null }; }
+    const parts = host.split('.');
+    for (let i = 0; i < parts.length - 1; i++) {
+      const candidate = parts.slice(i).join('.');
+      if (this.domains.has(candidate)) return { blocked: true, domain: candidate };
+    }
+    return { blocked: false, domain: null };
+  }
+
+  /* Combined decision for a navigation target. */
+  check(url) {
+    const host = this.matchHost(url);
+    if (host.blocked) return { blocked: true, reason: 'domain', domain: host.domain, rules: [host.domain] };
+    const m = this.matchUrl(url);
+    if (m.blocked) return { blocked: true, reason: 'url', domain: null, rules: m.rules };
+    return { blocked: false };
+  }
+
+  /* CSS for a site we let through, so its ads/trackers stay hidden. */
+  cosmeticFor(url, { global = true } = {}) {
+    let host = '';
+    try { host = new URL(url).hostname.toLowerCase(); } catch (e) { host = ''; }
+    const out = global ? [...this.globalCosmetic] : [];
+    const parts = host ? host.split('.') : [];
+    for (let i = 0; i < parts.length - 1; i++) {
+      const candidate = parts.slice(i).join('.');
+      const rules = this.cosmetic.get(candidate);
+      if (rules) out.push(...rules);
+    }
+    return [...new Set(out)];
+  }
+
+  stats() {
+    return this.counts || { rules: 0, network: 0, cosmetic: 0, domains: 0 };
+  }
+}
+
+
+/* ==== src: assets/search.js ==== */
+/* CleanGEO — search backends (no API keys, all keyless) */
+
+const JINA = 'https://r.jina.ai/';
+const CACHE_PREFIX = 'cg.q.';
+const TTL = 5 * 60 * 1000;
+
+const ENGINES = {
+  ddg: { id: 'ddg', label: 'DuckDuckGo' },
+  bing: { id: 'bing', label: 'Bing' },
+  wiki: { id: 'wiki', label: 'Wikipedia' },
+};
+
+function timeout(ms) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  return { signal: c.signal, done: () => clearTimeout(t) };
+}
+
+function isGeorgian(q) {
+  return /[\u10A0-\u10FF\u1C90-\u1CBF]/.test(q);
+}
+
+function looksLikeUrl(q) {
+  const s = q.trim();
+  if (/^https?:\/\/\S+$/i.test(s)) return s;
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?$/i.test(s)) return 'https://' + s;
+  return null;
+}
+
+function clean(s) {
+  return String(s || '').replace(/\s+/g, ' ').trim();
+}
+
+function stripTags(s) {
+  const d = document.createElement('div');
+  d.innerHTML = String(s || '');
+  return clean(d.textContent);
+}
+
+function decodeBingLink(href) {
+  try {
+    const u = new URL(href, 'https://www.bing.com');
+    const enc = u.searchParams.get('u');
+    if (!enc) return href;
+    let b64 = enc.startsWith('a1') ? enc.slice(2) : enc;
+    b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch (e) {
+    return href;
+  }
+}
+
+function decodeDdgLink(href) {
+  try {
+    if (href.includes('uddg=')) {
+      const u = new URL(href, 'https://duckduckgo.com');
+      const target = u.searchParams.get('uddg');
+      if (target) return target;
+    }
+    if (href.startsWith('//')) return 'https:' + href;
+    return href;
+  } catch (e) {
+    return href;
+  }
+}
+
+async function viaJina(target, { html = true, ms = 16000 } = {}) {
+  const t = timeout(ms);
+  try {
+    const headers = html ? { 'x-respond-with': 'html' } : {};
+    const r = await fetch(JINA + encodeURIComponent(target), { headers, signal: t.signal });
+    if (!r.ok) throw new Error('proxy ' + r.status);
+    const body = await r.text();
+    if (/Attention Required! \| Cloudflare/.test(body) || /Just a moment\.\.\./.test(body)) {
+      throw new Error('proxy blocked');
+    }
+    return body;
+  } finally {
+    t.done();
+  }
+}
+
+function cacheGet(key) {
+  try {
+    const raw = sessionStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (Date.now() - o.t > TTL) return null;
+    return o.v;
+  } catch (e) { return null; }
+}
+
+function cacheSet(key, v) {
+  try { sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ t: Date.now(), v })); } catch (e) {}
+}
+
+/* ---------- DuckDuckGo (lite) ---------- */
+async function searchDdg(q) {
+  const target = 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q) + '&kl=wt-wt';
+  const html = await viaJina(target, { html: true });
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out = [];
+  const links = [...doc.querySelectorAll('a.result-link')];
+  for (const a of links) {
+    const href = decodeDdgLink(a.getAttribute('href') || '');
+    if (!/^https?:\/\//i.test(href)) continue;
+    let snippet = '';
+    let shown = '';
+    let row = a.closest('tr');
+    let guard = 0;
+    while (row && guard++ < 6) {
+      row = row.nextElementSibling;
+      if (!row) break;
+      if (row.querySelector('a.result-link')) break;
+      const sn = row.querySelector('.result-snippet');
+      if (sn && !snippet) snippet = clean(sn.textContent);
+      const st = row.querySelector('.link-text');
+      if (st && !shown) shown = clean(st.textContent);
+    }
+    out.push({ title: clean(a.textContent) || href, url: href, snippet, engine: 'ddg', shown });
+    if (out.length >= 30) break;
+  }
+  return out;
+}
+
+/* ---------- Bing ---------- */
+async function searchBing(q) {
+  const target = 'https://www.bing.com/search?q=' + encodeURIComponent(q) + '&setlang=en&cc=GE';
+  const html = await viaJina(target, { html: true });
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out = [];
+  for (const li of doc.querySelectorAll('li.b_algo')) {
+    const a = li.querySelector('h2 a');
+    if (!a) continue;
+    let href = a.getAttribute('href') || '';
+    href = href.includes('/ck/a') ? decodeBingLink(href) : href;
+    if (!/^https?:\/\//i.test(href)) continue;
+    const p = li.querySelector('.b_caption p') || li.querySelector('.b_lineclamp1, p');
+    out.push({
+      title: clean(a.textContent) || href,
+      url: href,
+      snippet: p ? clean(p.textContent) : '',
+      engine: 'bing',
+      shown: (() => { try { return new URL(href).hostname.replace(/^www\./, ''); } catch (e) { return ''; } })(),
+    });
+    if (out.length >= 25) break;
+  }
+  return out;
+}
+
+/* ---------- Wikipedia (direct CORS) ---------- */
+async function searchWiki(q) {
+  const lang = isGeorgian(q) ? 'ka' : 'en';
+  const url = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(q)}&srlimit=4&srprop=snippet&format=json&origin=*`;
+  const t = timeout(9000);
+  try {
+    const r = await fetch(url, { signal: t.signal });
+    const j = await r.json();
+    return (j.query?.search || []).map(s => ({
+      title: s.title,
+      url: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(s.title.replace(/ /g, '_'))}`,
+      snippet: stripTags(s.snippet),
+      engine: 'wiki',
+      shown: lang + '.wikipedia.org',
+    }));
+  } finally { t.done(); }
+}
+
+function dedupe(results) {
+  const seen = new Set();
+  const out = [];
+  for (const r of results) {
+    let key;
+    try {
+      const u = new URL(r.url);
+      key = u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, '');
+    } catch (e) { key = r.url; }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+/* ---------- public API ---------- */
+async function webSearch(query, { engines = ['ddg', 'bing'] } = {}) {
+  const q = clean(query);
+  if (!q) return { query: q, results: [], engines: [], direct: null };
+
+  const cached = cacheGet('w:' + q + ':' + engines.join(','));
+  if (cached) return cached;
+
+  const direct = looksLikeUrl(q);
+  const tasks = [];
+  const order = engines.includes('ddg') ? ['ddg', 'bing'] : ['bing'];
+
+  for (const id of order) {
+    const fn = id === 'ddg' ? searchDdg : searchBing;
+    tasks.push(
+      fn(q).then(rs => ({ id, ok: true, rs })).catch(e => ({ id, ok: false, error: String(e.message || e) }))
+    );
+  }
+  tasks.push(searchWiki(q).then(rs => ({ id: 'wiki', ok: true, rs })).catch(() => ({ id: 'wiki', ok: false, rs: [] })));
+
+  const settled = await Promise.all(tasks);
+
+  let results = [];
+  const engineInfo = [];
+  for (const s of settled) {
+    engineInfo.push({ id: s.id, ok: s.ok, count: s.rs?.length || 0 });
+    if (s.rs?.length) {
+      // main engines first, wikipedia only supplements
+      results = results.concat(s.rs.map(r => ({ ...r, source: s.id })));
+    }
+  }
+
+  if (direct) {
+    results.unshift({
+      title: q.replace(/^https?:\/\//, ''),
+      url: direct,
+      snippet: 'მისამართი — გაიხსნება დაცულ რეჟიმში',
+      engine: 'direct',
+      source: 'direct',
+      shown: (() => { try { return new URL(direct).hostname; } catch (e) { return ''; } })(),
+    });
+  }
+
+  results = dedupe(results);
+
+  const mainFailed = !results.some(r => r.source === 'ddg' || r.source === 'bing');
+
+  // put wikipedia "about" card right after the direct hit
+  const value = { query: q, results, engines: engineInfo, direct, mainFailed, at: Date.now() };
+  if (results.length) cacheSet('w:' + q + ':' + engines.join(','), value);
+  return value;
+}
+
+
+/* ==== src: assets/proxy.js ==== */
+/* CleanGEO — safe reader: fetch a third-party page through a text proxy, sanitize
+   the HTML and render it with no third-party scripts, frames or beacons.
+   Nothing of the original site executes, so its trackers and malware cannot. */
+
+const READER = 'https://r.jina.ai/';
+
+const ttl = 10 * 60 * 1000;
+const memory = new Map();
+
+function ctrl(ms) {
+  const c = new AbortController();
+  const timer = setTimeout(() => c.abort(), ms);
+  return { signal: c.signal, done: () => clearTimeout(timer) };
+}
+
+const CHALLENGE = /just a moment|attention required|performing security verification|checking your browser|d dos protection|verify you are human|enable javascript and cookies/i;
+
+function looksLikeChallenge(text, title) {
+  const head = String(text || '').slice(0, 1200);
+  if (CHALLENGE.test(head)) return true;
+  if (String(title || '').trim().length < 24 && CHALLENGE.test(title || '')) return true;
+  return false;
+}
+
+function sanitize(doc) {
+  const kill = ['script', 'noscript', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet',
+    'form', 'input', 'button', 'select', 'textarea', 'video', 'audio', 'source', 'track',
+    'svg', 'canvas', 'link', 'meta', 'base', 'template', 'nav', 'aside', 'footer', 'header',
+    '.navbox', '.vertical-navbox', '.navbox-styles', '#catlinks', '.mw-editsection', '.reference',
+    '.vector-header', '#p-lang', '.sidebar', '.toc', '#toc', '.mw-jump-link', '.noprint'];
+  for (const sel of kill) doc.querySelectorAll(sel).forEach(n => n.remove());
+
+  doc.querySelectorAll('*').forEach(el => {
+    for (const attr of [...el.attributes]) {
+      const n = attr.name.toLowerCase();
+      const v = String(attr.value || '');
+      if (n.startsWith('on') || n === 'srcdoc' || n === 'ping') el.removeAttribute(attr.name);
+      else if (n === 'style' && /url\s*\(|expression|javascript:/i.test(v)) el.removeAttribute(attr.name);
+      else if ((n === 'src' || n === 'srcset' || n === 'poster' || n === 'background' ||
+        n === 'action' || n === 'data-src' || n === 'formaction') && !/^(https?:|data:image\/)/i.test(v)) {
+        el.removeAttribute(attr.name);
+      } else if (n === 'href' && /^javascript:/i.test(v.trim())) el.removeAttribute(attr.name);
+    }
+  });
+  pruneLinkBlocks(doc);
+  return doc;
+}
+
+/* menus, language switchers and nav boxes are link soup: drop the blocks whose
+   text is mostly anchor labels, keeping real prose intact */
+function pruneLinkBlocks(doc) {
+  const blocks = [...doc.body.querySelectorAll('div,ul,ol,section,table,tbody,tr')].reverse();
+  for (const node of blocks) {
+    if (!node.isConnected) continue;
+    const anchors = node.querySelectorAll('a');
+    if (anchors.length < 8) continue;
+    const text = (node.textContent || '').trim().length;
+    if (!text) continue;
+    let linkText = 0;
+    for (const a of anchors) linkText += (a.textContent || '').trim().length;
+    // only drop pure navigation: dense links and almost no prose between them
+    if (linkText / text > 0.75 && text / anchors.length < 30) node.remove();
+  }
+}
+
+/* pick the part of the page that actually holds the article */
+function contentRoot(doc) {
+  const candidates = ['article', '.mw-parser-output', '#mw-content-text', 'main', '[role="main"]',
+    '#content', '.entry-content', '.post-content', '.article-body', 'body'];
+  let best = null;
+  let bestScore = 0;
+  for (const sel of candidates) {
+    const node = doc.querySelector(sel);
+    if (!node) continue;
+    let score = 0;
+    for (const p of node.querySelectorAll('p')) {
+      const t = (p.textContent || '').trim();
+      if (t.length > 50) score += t.length;
+    }
+    if (!score) score = (node.textContent || '').trim().length;
+    if (score > bestScore) { bestScore = score; best = node; }
+  }
+  return best || doc.body;
+}
+
+function absolutize(doc, baseUrl) {
+  doc.querySelectorAll('a[href]').forEach(a => {
+    try { a.setAttribute('href', new URL(a.getAttribute('href'), baseUrl).href); }
+    catch (e) { a.removeAttribute('href'); }
+    a.setAttribute('rel', 'noopener noreferrer');
+  });
+  doc.querySelectorAll('img[src]').forEach(img => {
+    try { img.setAttribute('src', new URL(img.getAttribute('src'), baseUrl).href); } catch (e) { img.removeAttribute('src'); }
+    img.removeAttribute('srcset');
+    img.setAttribute('referrerpolicy', 'no-referrer');
+    img.setAttribute('loading', 'lazy');
+    img.setAttribute('decoding', 'async');
+  });
+  return doc;
+}
+
+/* very small markdown -> html, for the text fallback */
+function mdToHtml(md) {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inline = s => esc(s)
+    .replace(/!\[([^\]]*)\]\((https?:[^)\s]+)\)/g, '<img alt="$1" src="$2" loading="lazy" referrerpolicy="no-referrer">')
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" rel="noopener noreferrer">$1</a>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  const out = [];
+  let list = null;
+  for (const rawLine of md.split(/\r?\n/)) {
+    const line = rawLine.trimEnd();
+    const li = line.match(/^\s*([-*+]|\d+\.)\s+(.*)$/);
+    if (li) {
+      if (!list) { list = li[1].match(/\d/) ? 'ol' : 'ul'; out.push('<' + list + '>'); }
+      out.push('<li>' + inline(li[2]) + '</li>');
+      continue;
+    }
+    if (list) { out.push('</' + list + '>'); list = null; }
+    if (!line.trim()) continue;
+    const h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) { const lvl = Math.min(h[1].length, 3); out.push(`<h${lvl}>${inline(h[2])}</h${lvl}>`); continue; }
+    if (/^>\s?/.test(line)) { out.push('<blockquote>' + inline(line.replace(/^>\s?/, '')) + '</blockquote>'); continue; }
+    if (/^(-{3,}|\*{3,})$/.test(line.trim())) { out.push('<hr>'); continue; }
+    out.push('<p>' + inline(line) + '</p>');
+  }
+  if (list) out.push('</' + list + '>');
+  return out.join('\n');
+}
+
+/**
+ * @returns {Promise<{title,html,text,url,via}>}
+ */
+async function fetchReadable(url, { timeoutMs = 18000 } = {}) {
+  const hit = memory.get(url);
+  if (hit && Date.now() - hit.at < ttl) return hit.value;
+
+  let lastErr = null;
+
+  // 1) HTML through the reader proxy — lets us apply cosmetic filter rules
+  try {
+    const c = ctrl(16000);
+    const r = await fetch(READER + encodeURIComponent(url), {
+      headers: { 'x-respond-with': 'html' },
+      signal: c.signal,
+    });
+    c.done();
+    if (r.ok) {
+      const raw = await r.text();
+      if (!/Attention Required! \| Cloudflare|Just a moment\.\.\./i.test(raw.slice(0, 800))) {
+        const doc = new DOMParser().parseFromString(raw, 'text/html');
+        const title = (doc.title || '').trim() || url;
+        sanitize(doc);
+        absolutize(doc, url);
+        const src = contentRoot(doc);
+        let html = src ? src.innerHTML : '';
+        const text = src ? (src.textContent || '').replace(/\s+/g, ' ').trim() : '';
+        if (text.length > 60 && !looksLikeChallenge(text, title)) {
+          const value = { title, html, text, url, via: 'html' };
+          memory.set(url, { at: Date.now(), value });
+          return value;
+        }
+        if (looksLikeChallenge(text, title)) lastErr = new Error('საიტი იცავს თავს ბოტებისგან');
+      }
+    }
+  } catch (e) { lastErr = e; console.warn('CleanGEO reader html route:', e && e.message); }
+
+  // 2) Markdown fallback — pure text, even safer
+  try {
+    const c = ctrl(timeoutMs);
+    const r = await fetch(READER + encodeURIComponent(url), { signal: c.signal });
+    c.done();
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const md = await r.text();
+    const titleM = md.match(/^Title:\s*(.+)$/m);
+    const bodyIdx = md.indexOf('Markdown Content:');
+    const body = bodyIdx >= 0 ? md.slice(bodyIdx + 'Markdown Content:'.length) : md;
+    if (looksLikeChallenge(body, titleM ? titleM[1] : '')) throw new Error('საიტი იცავს თავს ბოტებისგან');
+    const value = {
+      title: (titleM ? titleM[1].trim() : url),
+      html: mdToHtml(body),
+      text: body.replace(/\s+/g, ' ').trim(),
+      url,
+      via: 'md',
+    };
+    memory.set(url, { at: Date.now(), value });
+    return value;
+  } catch (e) { lastErr = e; console.warn('CleanGEO reader md route:', e && e.message); }
+
+  throw lastErr || new Error('გვერდი ვერ ჩაიტვირთა');
+}
+
+
+/* ==== src: assets/store.js ==== */
+/* CleanGEO — block list storage + automatic re-checking */
+
+const K = {
+  source: 'cg.source',
+  text: 'cg.list.text',
+  savedAt: 'cg.list.savedAt',
+  etag: 'cg.list.etag',
+  commit: 'cg.list.commit',
+  auto: 'cg.auto',
+  interval: 'cg.interval',
+  log: 'cg.log',
+  extra: 'cg.extra',
+  settings: 'cg.settings',
+  lastCheck: 'cg.lastCheck',
+};
+
+const CHECK_INTERVALS = {
+  15: 'ყოველ 15 წუთში',
+  60: 'ყოველ საათში',
+  360: 'ყოველ 6 საათში',
+  1440: 'დღეში ერთხელ',
+  0: 'მხოლოდ ხელით',
+};
+
+const DEFAULT_SETTINGS = {
+  shield: true,        // check every result against the block list
+  shieldFirst: true,   // open links filtered by default
+  cosmetic: true,      // apply the list's CSS rules
+  warn: true,          // warn before opening a blocked host
+};
+
+/* ---------- tiny storage helpers ---------- */
+function getSetting(key, fallback) {
+  const s = readJSON(K.settings, {});
+  return s[key] === undefined ? fallback : s[key];
+}
+function setSetting(key, value) {
+  const s = readJSON(K.settings, {});
+  s[key] = value;
+  writeJSON(K.settings, s);
+}
+
+function readJSON(k, d) {
+  try { const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : d; } catch (e) { return d; }
+}
+function writeJSON(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+}
+const readStr = (k, d = '') => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
+const writeStr = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+/* ---------- settings block ---------- */
+function settings() {
+  return { ...DEFAULT_SETTINGS, ...readJSON(K.settings, {}) };
+}
+function saveSettings(patch) {
+  const next = { ...settings(), ...patch };
+  writeJSON(K.settings, next);
+  return next;
+}
+
+/* ---------- source ---------- */
+function source() {
+  return readStr(K.source, DEFAULT_SOURCE) || DEFAULT_SOURCE;
+}
+function setSource(url) {
+  writeStr(K.source, url.trim());
+}
+
+/* ---------- auto refresh config ---------- */
+function autoConfig() {
+  return {
+    enabled: readStr(K.auto, '1') !== '0',
+    interval: Number(readStr(K.interval, '60')) || 0,
+  };
+}
+function setAuto(patch) {
+  if (patch.enabled !== undefined) writeStr(K.auto, patch.enabled ? '1' : '0');
+  if (patch.interval !== undefined) writeStr(K.interval, String(patch.interval));
+}
+
+/* ---------- the list ---------- */
+let cachedList = null;
+
+function listText() {
+  return readStr(K.text, '');
+}
+function savedAt() {
+  return Number(readStr(K.savedAt, '0')) || 0;
+}
+function lastCheck() {
+  return Number(readStr(K.lastCheck, '0')) || 0;
+}
+
+function blockList({ force = false } = {}) {
+  const extra = readStr(K.extra, '');
+  const text = listText();
+  const sig = hash(text) + ':' + hash(extra) + ':' + text.length;
+  if (!force && cachedList && cachedList.sig === sig) return cachedList.list;
+  const list = new BlockList(text, extra);
+  cachedList = { sig, list };
+  return list;
+}
+
+/* locally added lines (user's own rules) */
+function extraRules() { return readStr(K.extra, ''); }
+function setExtraRules(text) {
+  writeStr(K.extra, text);
+  cachedList = null;
+}
+
+function usernames() { return readJSON(K.log, []); }
+function changelog(n = 8) { return readJSON(K.log, []).slice(0, n); }
+
+function pushLog(entry) {
+  const log = readJSON(K.log, []);
+  log.unshift(entry);
+  writeJSON(K.log, log.slice(0, 30));
+}
+
+/* ---------- fetching (several routes, first that works) ---------- */
+async function fetchText(url, { timeoutMs = 12000, etag = '', useEtag = false } = {}) {
+  const tries = [];
+  const isRaw = /raw\.githubusercontent\.com|github\.io/i.test(url);
+  tries.push({ url, headers: useEtag && etag ? { 'If-None-Match': etag } : {} });
+
+  const bare = url.replace(/^https?:\/\//, '');
+  if (isRaw) {
+    // mirror through a couple of CORS-friendly routes if the direct one is offline
+    tries.push({ url: PAGES_SOURCE });
+    tries.push({ url: 'https://cdn.jsdelivr.net/gh/devunionsup/CleanGEO@main/CleanGEO.txt' });
+  }
+  if (location.protocol !== 'file:') {
+    const local = new URL(LOCAL_SOURCE, location.href).href;
+    if (!tries.some(t => t.url === local)) tries.push({ url: local });
+  }
+
+  let lastErr = null;
+  for (const t of tries) {
+    const c = new AbortController();
+    const timer = setTimeout(() => c.abort(), timeoutMs);
+    try {
+      const r = await fetch(t.url, { headers: t.headers, signal: c.signal, cache: 'no-store' });
+      clearTimeout(timer);
+      if (r.status === 304) return { notModified: true, etag };
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const text = await r.text();
+      if (!text || text.length < 20) throw new Error('ცარიელი პასუხი');
+      return { text, etag: r.headers.get('etag') || '', url: t.url };
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('ჩამოტვირთვა ვერ მოხერხდა');
+}
+
+async function latestCommit() {
+  try {
+    const c = new AbortController();
+    const timer = setTimeout(() => c.abort(), 8000);
+    const r = await fetch(COMMIT_API, { signal: c.signal, headers: { Accept: 'application/vnd.github+json' } });
+    clearTimeout(timer);
+    if (!r.ok) return '';
+    const j = await r.json();
+    return j?.[0]?.sha || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+/* ---------- installing / updating ---------- */
+function installFromText(text, { url = '', commit = '', etag = '' } = {}) {
+  const before = listText();
+  writeStr(K.text, text);
+  writeStr(K.savedAt, String(Date.now()));
+  writeStr(K.etag, etag);
+  if (url) writeStr(K.source, url);
+  if (commit) writeStr(K.commit, commit);
+  cachedList = null;
+  const diff = before ? diffRules(before, text) : { added: [], removed: [], total: ruleKeys(text).size };
+  return diff;
+}
+
+async function downloadList({ url = source() } = {}) {
+  const res = await fetchText(url, { timeoutMs: 15000 });
+  if (res.notModified) return { notModified: true };
+  const commit = await latestCommit();
+  const diff = installFromText(res.text, { url, commit, etag: res.etag });
+  writeStr(K.lastCheck, String(Date.now()));
+  pushLog({
+    at: Date.now(),
+    type: 'install',
+    message: 'სია ჩამოიტვირთა',
+    added: diff.added.length || diff.total,
+    removed: diff.removed.length,
+    total: diff.total,
+  });
+  return { ...diff, url, commit, bytes: res.text.length };
+}
+
+/**
+ * Check the remote list for changes. Downloads only when it actually differs,
+ * and when rules disappear the local copy is replaced — deleted rules are gone.
+ */
+async function checkForUpdates({ manual = false, url = source() } = {}) {
+  writeStr(K.lastCheck, String(Date.now()));
+  const current = listText();
+  let res;
+  try {
+    res = await fetchText(url, {
+      timeoutMs: manual ? 20000 : 12000,
+      etag: readStr(K.etag, ''),
+      useEtag: !!current,
+    });
+  } catch (e) {
+    pushLog({ at: Date.now(), type: 'error', message: 'შემოწმება ვერ მოხერხდა: ' + (e.message || e), added: 0, removed: 0 });
+    return { ok: false, error: String(e.message || e) };
+  }
+
+  if (res.notModified) {
+    pushLog({ at: Date.now(), type: 'same', message: 'ცვლილება არ არის (304)', added: 0, removed: 0 });
+    return { ok: true, changed: false, added: 0, removed: 0 };
+  }
+
+  if (res.etag) writeStr(K.etag, res.etag);
+  const commit = await latestCommit();
+  const prevCommit = readStr(K.commit, '');
+  const isSame = current && current === res.text;
+
+  if (isSame) {
+    if (commit && commit !== prevCommit) writeStr(K.commit, commit);
+    pushLog({ at: Date.now(), type: 'same', message: 'სია უცვლელია', added: 0, removed: 0 });
+    return { ok: true, changed: false, added: 0, removed: 0, total: 0 };
+  }
+
+  const diff = current ? diffRules(current, res.text) : { added: [], removed: [], total: ruleKeys(res.text).size };
+  installFromText(res.text, { url, commit: commit || prevCommit, etag: res.etag });
+
+  if (!current) {
+    pushLog({
+      at: Date.now(), type: 'install', message: 'სია დაყენდა პირველად',
+      added: diff.total, removed: 0, total: diff.total,
+    });
+    return { ok: true, changed: true, first: true, added: diff.total, removed: 0, total: diff.total };
+  }
+
+  pushLog({
+    at: Date.now(),
+    type: 'update',
+    message: diff.added.length || diff.removed.length ? 'სია განახლდა' : 'სია განახლდა',
+    added: diff.added.length,
+    removed: diff.removed.length,
+    total: diff.total,
+    addedSample: diff.added.slice(0, 4),
+    removedSample: diff.removed.slice(0, 4),
+  });
+
+  return {
+    ok: true, changed: true,
+    added: diff.added.length, removed: diff.removed.length, total: diff.total,
+    addedSample: diff.added.slice(0, 5), removedSample: diff.removed.slice(0, 5),
+  };
+}
+
+/* ---------- scheduler ---------- */
+let timer = null;
+let listeners = [];
+function onUpdate(fn) {
+  listeners.push(fn);
+  return () => { listeners = listeners.filter(f => f !== fn); };
+}
+function emit(payload) {
+  listeners.forEach(f => { try { f(payload); } catch (e) {} });
+  try { window.dispatchEvent(new CustomEvent('cg:update', { detail: payload })); } catch (e) {}
+}
+
+function scheduleAuto() {
+  clearInterval(timer);
+  timer = null;
+  const { enabled, interval } = autoConfig();
+  if (!enabled || !interval) return;
+  timer = setInterval(async () => {
+    if (document.hidden) return;
+    const r = await checkForUpdates({ manual: false });
+    if (r.ok) emit(r);
+  }, interval * 60 * 1000);
+}
+
+async function bootstrap() {
+  scheduleAuto();
+  const { enabled, interval } = autoConfig();
+  const since = Date.now() - lastCheck();
+  if (enabled && (!listText() || since > interval * 60 * 1000)) {
+    const r = await checkForUpdates({ manual: false });
+    if (r.ok) emit(r);
+    return r;
+  }
+  return { ok: true, changed: false, skipped: true };
+}
+
+/* re-check as soon as the tab becomes visible again */
+function watchVisibility() {
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) return;
+    const { enabled, interval } = autoConfig();
+    if (!enabled || !interval) return;
+    if (Date.now() - lastCheck() < interval * 60 * 1000) return;
+    const r = await checkForUpdates({ manual: false });
+    if (r.ok) emit(r);
+  });
+  window.addEventListener('online', async () => {
+    const { enabled } = autoConfig();
+    if (!enabled) return;
+    const r = await checkForUpdates({ manual: false });
+    if (r.ok) emit(r);
+  });
+}
+
+
+/* ==== src: assets/app.js ==== */
+/* CleanGEO — app shell */
+
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === true) n.setAttribute(k, '');
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) n.appendChild(typeof k === 'string' ? document.createTextNode(k) : k);
+  return n;
+};
+
+const state = { query: '', results: [], engineInfo: [], busy: false, list: null };
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg, ms = 2600) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+/* ---------- list status ---------- */
+function refreshStatus() {
+  const list = blockList();
+  state.list = list;
+  const s = list.stats();
+  const dot = $('#shieldDot');
+  const txt = $('#shieldText');
+  const on = settings().shield;
+  dot.className = 'dot ' + (!on ? '' : s.rules ? 'ok' : 'err');
+  txt.textContent = !on ? 'ფილტრი გამორთული' : s.rules ? `დაცვა ჩართული` : 'სია ცარიელია';
+  txt.title = `${s.rules} წესი · ${s.domains} დომენი`;
+  $('#listLink').href = source();
+  renderStats();
+  renderLog();
+}
+
+function renderStats() {
+  const list = state.list || blockList();
+  const s = list.stats();
+  const nodes = [
+    [s.rules, 'წესი'],
+    [s.domains, 'დომენი'],
+    [s.cosmetic, 'დამალვის წესი'],
+    [savedAt() ? new Date(savedAt()).toLocaleDateString('ka-GE', { day: '2-digit', month: 'short' }) : '—', 'განახლდა'],
+  ];
+  $('#stats').replaceChildren(...nodes.map(([v, l]) =>
+    el('div', { class: 'stat' }, el('b', {}, String(v)), el('span', {}, l))));
+  $('#lastCheckText').textContent = lastCheck()
+    ? 'ბოლო შემოწმება: ' + new Date(lastCheck()).toLocaleString('ka-GE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : 'ჯერ არ შემოწმებულა';
+  $('#sourceText').textContent = source().replace(/^https?:\/\//, '');
+}
+
+function renderLog() {
+  const items = changelog(6);
+  const box = $('#logList');
+  if (!items.length) {
+    box.replaceChildren(el('li', {}, 'ცვლილებები ჯერ არ არის.'));
+    return;
+  }
+  box.replaceChildren(...items.map(e => {
+    const d = new Date(e.at);
+    const when = d.toLocaleString('ka-GE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const parts = [];
+    if (e.added) parts.push(el('span', { class: 'plus' }, ` +${e.added}`));
+    if (e.removed) parts.push(el('span', { class: 'minus' }, ` −${e.removed}`));
+    return el('li', {},
+      el('b', {}, e.message || 'განახლება'),
+      parts,
+      el('div', {}, when + (e.total ? ` · სულ ${e.total}` : '')));
+  }));
+}
+
+/* ---------- search ---------- */
+function readQuery() {
+  const sp = new URLSearchParams(location.search);
+  if (sp.get('q')) return sp.get('q');
+  const h = new URLSearchParams(location.hash.slice(1));
+  return h.get('q') || '';
+}
+
+function setQueryUrl(q) {
+  const base = location.pathname;
+  const next = q ? base + '?' + new URLSearchParams({ q }).toString() : base;
+  history.replaceState(null, '', next);
+}
+
+async function runSearch(q, { push = true } = {}) {
+  q = (q || '').trim();
+  if (!q) return;
+  state.query = q;
+  state.busy = true;
+  document.body.classList.remove('home');
+  document.title = q + ' — CleanGEO';
+  setQueryUrl(q);
+  $('#q').value = q;
+
+  const out = $('#output');
+  out.replaceChildren(
+    el('div', { class: 'result-meta' }, el('strong', {}, 'მიმდინარეობს ძებნა…')),
+    el('div', { class: 'skel' }), el('div', { class: 'skel' }), el('div', { class: 'skel' }));
+  $('#homeNote').hidden = true;
+
+  let data;
+  try {
+    data = await webSearch(q);
+  } catch (e) {
+    out.replaceChildren(el('div', { class: 'empty' }, 'ძებნა ვერ შესრულდა — შეამოწმეთ კავშირი.'));
+    state.busy = false;
+    return;
+  }
+  state.results = data.results;
+  state.engineInfo = data.engines;
+  state.busy = false;
+  renderResults();
+}
+
+function siteKey(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return ''; }
+}
+
+function renderResults() {
+  const out = $('#output');
+  const list = state.list || blockList();
+  const shieldOn = settings().shield;
+  const items = state.results;
+
+  if (!items.length) {
+    out.replaceChildren(
+      el('div', { class: 'empty' },
+        'შედეგი ვერ მოიძებნა.',
+        el('div', { class: 'chips' },
+          el('a', { class: 'chip', href: 'https://duckduckgo.com/?q=' + encodeURIComponent(state.query), target: '_blank', rel: 'noopener' }, 'DuckDuckGo-ზე გახსნა'),
+          el('a', { class: 'chip', href: 'https://www.google.com/search?q=' + encodeURIComponent(state.query), target: '_blank', rel: 'noopener' }, 'Google-ზე გახსნა'))));
+    return;
+  }
+
+  const blockedCount = items.filter(r => shieldOn && list.check(r.url).blocked).length;
+  const metas = el('div', { class: 'result-meta' },
+    el('strong', {}, String(items.length)),
+    ' შედეგი',
+    ...(enginesLabel().length ? [' · ', el('span', {}, enginesLabel().join(' · '))] : []),
+    el('span', { style: 'margin-left:auto' }, '🛡️ ' + (shieldOn ? 'დაცვა ჩართული' : 'დაცვა გამორთული')),
+    blockedCount ? el('span', { class: 'badge' }, '⛔ ' + blockedCount) : null);
+
+  const rows = items.map(r => renderResult(r, list, shieldOn));
+  out.replaceChildren(metas, el('div', { class: 'result-list' }, ...rows));
+}
+
+function enginesLabel() {
+  const names = { ddg: 'DuckDuckGo', bing: 'Bing', wiki: 'Wikipedia', direct: 'მისამართი' };
+  const ok = state.engineInfo.filter(e => e.ok && e.count).map(e => names[e.id] || e.id);
+  return ok;
+}
+
+function renderResult(r, list, shieldOn) {
+  const host = siteKey(r.url);
+  const verdict = shieldOn && list ? list.check(r.url) : { blocked: false };
+  const blocked = verdict.blocked;
+
+  const title = el('a', {
+    class: 'res-title', href: r.url, rel: 'noopener noreferrer',
+    'data-open': r.url,
+  }, r.title || r.url);
+
+  const avatar = el('div', { class: 'avatar', 'aria-hidden': 'true' }, (host[0] || '?').toUpperCase());
+
+  const origin = el('a', { class: 'mini', href: r.url, target: '_blank', rel: 'noopener noreferrer' }, 'ორიგინალი ↗');
+  origin.addEventListener('click', (ev) => {
+    if (blocked && settings().warn) {
+      ev.preventDefault();
+      if (!confirm(`⛔ ${host || r.url} ბლოკ-ლისტშია.\n\nორიგინალი საიტი დაუცველად გავხსნათ?`)) return;
+      window.open(r.url, '_blank', 'noopener');
+    }
+  });
+
+  const actions = el('div', { class: 'res-actions' },
+    el('button', { class: 'mini', type: 'button', 'data-reader': r.url }, '🛡️ დაცული გახსნა'),
+    origin);
+
+  const body = el('div', {},
+    title,
+    el('div', { class: 'res-url' }, r.shown || host),
+    r.snippet ? el('p', { class: 'res-snippet' }, r.snippet) : null,
+    blocked ? el('div', { style: 'margin-top:8px' },
+      el('span', { class: 'badge' }, '⛔ CleanGEO ბლოკავს: ' + (verdict.domain || 'წესი'))) : null,
+    actions);
+
+  const row = el('article', { class: 'res' + (blocked ? ' blocked' : '') }, avatar, body);
+
+  title.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    chooseOpen(r.url, blocked, verdict);
+  });
+  actions.querySelector('[data-reader]').addEventListener('click', () => openReader(r.url));
+  return row;
+}
+
+function chooseOpen(url, blocked, verdict) {
+  if (blocked && settings().warn) {
+    const ok = confirm(`⛔ ეს საიტი თქვენს ბლოკ-ლისტშია (${verdict.domain || 'წესი'}).\n\nმაინც გავხსნათ დაცულ რეჟიმში?`);
+    if (!ok) return;
+  }
+  if (!settings().shieldFirst) { window.open(url, '_blank', 'noopener'); return; }
+  openReader(url);
+}
+
+/* ---------- reader ---------- */
+
+/* cosmetic rules from the block list, active only while the reader is open */
+function applyReaderCss(rules) {
+  let style = document.getElementById('cgReaderCss');
+  if (!rules || !rules.length) {
+    if (style) style.remove();
+    return;
+  }
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'cgReaderCss';
+    document.head.appendChild(style);
+  }
+  style.textContent = rules.join('\n');
+}
+
+async function openReader(url) {
+  const reader = $('#reader');
+  const body = $('#readerBody');
+  body.replaceChildren(el('div', { class: 'empty' }, 'იტვირთება…'));
+  $('#readerTitle').textContent = siteKey(url);
+  $('#readerUrl').textContent = url;
+  $('#readerOpen').onclick = () => window.open(url, '_blank', 'noopener');
+  reader.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  const list = state.list || blockList();
+
+  try {
+    const page = await fetchReadable(url);
+    $('#readerTitle').textContent = page.title;
+    const doc = el('div', { class: 'doc' });
+    doc.innerHTML = page.html;
+    // the list's cosmetic rules apply to the rendered page as a stylesheet
+    const css = settings().cosmetic ? list.cosmeticFor(url) : [];
+    body.replaceChildren();
+    applyReaderCss(css);
+    body.appendChild(doc);
+    const sel = getSelection();
+    if (sel) sel.removeAllRanges();
+    doc.querySelectorAll('a[href]').forEach(a => {
+      const href = a.getAttribute('href');
+      if (!href || !/^https?:/i.test(href)) { a.removeAttribute('href'); return; }
+      a.removeAttribute('target');
+      a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        const v = list.check(href);
+        if (v.blocked && settings().warn) {
+          if (!confirm(`⛔ ${siteKey(href)} ბლოკ-ლისტშია. გავხსნათ დაცულ რეჟიმში?`)) return;
+        }
+        openReader(href);
+      });
+    });
+    body.scrollTop = 0;
+    if (!page.text || page.text.length < 120) {
+      body.prepend(el('div', { class: 'notice warn' }, 'გვერდის ნაწილი ვერ წაიკითხა. სცადეთ ორიგინალის გახსნა ↗'));
+    }
+  } catch (e) {
+    const hint = /ბოტ|Cloudflare/i.test(String(e.message)) ? 'საიტი იცავს თავს ავტომატური წვდომისგან.' : 'გვერდი ვერ ჩაიტვირთა დაცულ რეჟიმში.';
+    body.replaceChildren(
+      el('div', { class: 'notice warn' },
+        el('div', {}, hint, el('div', { style: 'font-size:12.5px;opacity:.8' }, 'შეგიძლიათ გახსნათ ორიგინალი — მაშინ საიტის დაცვა CleanGEO-ზე აღარ ვრცელდება.')),
+        el('button', { class: 'mini', type: 'button', onclick: () => window.open(url, '_blank', 'noopener') }, 'ორიგინალის გახსნა ↗')));
+  }
+}
+
+function closeReader() {
+  $('#reader').hidden = true;
+  document.body.style.overflow = '';
+  applyReaderCss([]);
+}
+
+/* ---------- drawer ---------- */
+function openDrawer() {
+  $('#scrim').classList.add('on');
+  $('#drawer').classList.add('on');
+  $('#drawer').setAttribute('aria-hidden', 'false');
+  $('#menuBtn').setAttribute('aria-expanded', 'true');
+  renderStats();
+  renderLog();
+}
+function closeDrawer() {
+  $('#scrim').classList.remove('on');
+  $('#drawer').classList.remove('on');
+  $('#drawer').setAttribute('aria-hidden', 'true');
+  $('#menuBtn').setAttribute('aria-expanded', 'false');
+}
+
+function syncControls() {
+  const s = settings();
+  $('#setShield').checked = s.shield;
+  $('#setShieldFirst').checked = s.shieldFirst;
+  $('#setCosmetic').checked = s.cosmetic;
+  $('#setWarn').checked = s.warn;
+  const a = autoConfig();
+  $('#autoToggle').checked = a.enabled;
+  $('#intervalSelect').value = String(a.interval);
+  $('#sourceInput').value = source();
+  $('#extraRules').value = extraRules();
+}
+
+async function doCheck(manual = true) {
+  const btn = $('#checkNow');
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'მოწმდება…';
+  $('#updateHint').textContent = '';
+  const r = await checkForUpdates({ manual });
+  btn.disabled = false;
+  btn.textContent = label;
+  refreshStatus();
+  syncControls();
+  if (!r.ok) {
+    $('#updateHint').textContent = 'შემოწმება ვერ მოხერხდა — ინტერნეტი ან წყარო მიუწვდომელია.';
+    return;
+  }
+  if (r.changed) {
+    const bits = [];
+    if (r.added) bits.push(`+${r.added} ახალი`);
+    if (r.removed) bits.push(`−${r.removed} წაშლილი`);
+    $('#updateHint').textContent = `სია განახლდა: ${bits.join(', ') || 'შინაარსი შეიცვალა'} · სულ ${r.total}`;
+    toast('ბლოკ-ლისტი განახლდა' + (bits.length ? ': ' + bits.join(', ') : ''));
+  } else {
+    $('#updateHint').textContent = 'სია უკვე განახლებულია.';
+  }
+  if (state.results.length) renderResults();
+}
+
+function aboutNodes() {
+  const p = (t) => el('p', {}, t);
+  return [
+    p('ჩვეულებრივი საძიებო სისტემა შედეგზე დაჭერისთანავე ატვირთავს საიტის სკრიპტებს, ტრეკერებსა და რეკლამებს. CleanGEO ამას არ აკეთებს.'),
+    el('h3', {}, '1. ძებნა'),
+    p('შედეგები მოდის DuckDuckGo-დან და Bing-იდან. ყოველი შედეგი მოწმდება თქვენივე ბლოკ-ლისტით — საშიში დომენი მონიშნულია.'),
+    el('h3', {}, '2. დაცული გახსნა'),
+    p('საიტი იხსნება ტექსტურ რეჟიმში: მისი JavaScript, iframe-ები, ფორმები, ტრეკერ-პიქსელები და რეკლამები არ მუშაობს. სიის CSS წესები რეკლამის ბლოკებს მალავს.'),
+    el('h3', {}, '3. ბლოკ-ლისტი'),
+    p('სია იტვირთება GitHub-იდან და ავტომატურად შემოწმდება თქვენ მიერ არჩეული სიხშირით. თუ სიაში წესები დაემატა — დაემატება თქვენთანაც; თუ წაიშალა — წაიშლება თქვენთანაც. ცვლილებები ჩანს პარამეტრებში.'),
+    el('h3', {}, '4. მოწყობილობები'),
+    p('საიტი ადაპტირებულია ტელეფონზე, პლანშეტსა და კომპიუტერზე. iPhone-ზე „გაზიარება → ეკრანზე დამატება“ გახდის მას აპად.'),
+  ];
+}
+
+/* ---------- quick chips ---------- */
+function renderQuickChips() {
+  const box = $('#quickChips');
+  const samples = ['ბათუმი', 'ქართული ფილმები', 'ახალი ამბები', 'weather tbilisi'];
+  box.replaceChildren(...samples.map(s => el('button', { class: 'chip', type: 'button', onclick: () => runSearch(s) }, s)));
+  box.hidden = false;
+}
+
+/* ---------- boot ---------- */
+function goHome() {
+  document.body.classList.add('home');
+  document.title = 'CleanGEO — უსაფრთხო საძიებო სისტემა';
+  $('#output').replaceChildren();
+  $('#homeNote').hidden = false;
+  setQueryUrl('');
+  state.results = [];
+  renderQuickChips();
+}
+
+function wire() {
+  $('#searchForm').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const q = $('#q').value.trim();
+    if (q) runSearch(q);
+  });
+
+  $('#menuBtn').addEventListener('click', openDrawer);
+  $('#shieldChip').addEventListener('click', openDrawer);
+  $('.brand').addEventListener('click', (ev) => { ev.preventDefault(); goHome(); closeReader(); });
+  $('#drawerClose').addEventListener('click', closeDrawer);
+  $('#scrim').addEventListener('click', closeDrawer);
+  $('#readerBack').addEventListener('click', closeReader);
+  $('#aboutBtn').addEventListener('click', () => {
+    document.body.classList.remove('home');
+    setQueryUrl('');
+    state.results = [];
+    $('#output').replaceChildren(
+      el('div', { class: 'notice' }, '🛡️ როგორ მუშაობს CleanGEO'),
+      el('div', { class: 'doc', style: 'font-size:15.5px' }, ...aboutNodes()));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  $('#autoToggle').addEventListener('change', (e) => {
+    setAuto({ enabled: e.target.checked });
+    scheduleAuto();
+    toast(e.target.checked ? 'ავტომატური შემოწმება ჩართულია' : 'ავტომატური შემოწმება გამორთულია');
+  });
+  $('#intervalSelect').addEventListener('change', (e) => {
+    setAuto({ interval: Number(e.target.value) });
+    scheduleAuto();
+  });
+  $('#saveSource').addEventListener('click', () => {
+    const v = $('#sourceInput').value.trim();
+    if (!/^https?:\/\//i.test(v)) { toast('შეიყვანეთ სრული ბმული (https://…)'); return; }
+    setSource(v);
+    refreshStatus();
+    doCheck(true);
+  });
+  $('#checkNow').addEventListener('click', () => doCheck(true));
+  $('#extraRules').addEventListener('change', (e) => {
+    setExtraRules(e.target.value);
+    refreshStatus();
+    if (state.results.length) renderResults();
+    toast('საკუთარი წესები შენახულია');
+  });
+
+  for (const [id, key] of [['setShield', 'shield'], ['setShieldFirst', 'shieldFirst'], ['setCosmetic', 'cosmetic'], ['setWarn', 'warn']]) {
+    $('#' + id).addEventListener('change', (e) => {
+      saveSettings({ [key]: e.target.checked });
+      refreshStatus();
+      if (state.results.length) renderResults();
+    });
+  }
+
+  window.addEventListener('popstate', () => {
+    const q = readQuery();
+    if (q && q !== state.query) runSearch(q);
+    else if (!q) goHome();
+  });
+
+  onUpdate((r) => {
+    refreshStatus();
+    if (r && r.changed) toast('ბლოკ-ლისტი ავტომატურად განახლდა');
+  });
+
+  // keyboard shortcut for the drawer
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeDrawer(); closeReader(); }
+    if (e.key === '/' && document.activeElement !== $('#q')) { e.preventDefault(); $('#q').focus(); }
+  });
+}
+
+async function init() {
+  try {
+    wire();
+    const sel = $('#intervalSelect');
+    const opts = [[15, 'ყოველ 15 წუთში'], [60, 'ყოველ საათში'], [360, 'ყოველ 6 საათში'], [1440, 'დღეში ერთხელ'], [0, 'მხოლოდ ხელით']];
+    sel.replaceChildren(...opts.map(([v, l]) => el('option', { value: String(v) }, l)));
+
+    refreshStatus();
+    syncControls();
+
+    const q = readQuery();
+    if (q) { $('#q').value = q; runSearch(q); } else { renderQuickChips(); }
+
+    // first run / stale: pull the list
+    const r = await bootstrap();
+    refreshStatus();
+    syncControls();
+    if (r && r.ok && !r.skipped) {
+      if (r.changed) toast('ბლოკ-ლისტი მზადაა: ' + (r.total || blockList().stats().rules) + ' წესი');
+      if (state.results.length) renderResults();
+    } else if (!blockList().stats().rules) {
+      // fall back to the copy published next to the site
+      try { await downloadList({ url: new URL('CleanGEO.txt', location.href).href }); } catch (e) {}
+      refreshStatus();
+      if (state.results.length) renderResults();
+    }
+    watchVisibility();
+  } catch (e) {
+    console.error('init', e);
+    document.body.classList.remove('home');
+    $('#output').replaceChildren(el('div', { class: 'notice warn' }, 'საიტი ვერ ჩაიტვირთა სრულად — გადატვირთეთ გვერდი.'));
+  }
+}
+
+init();
+
+})();
+
+</script>
 </body>
 </html>

@@ -130,7 +130,15 @@ body:not(.home) .hero{display:none}
   font-weight:600;cursor:pointer;word-break:break-word;
 }
 .res-title:hover{text-decoration:underline}
-.res-url{font-size:12.5px;color:var(--muted);margin:2px 0 4px;word-break:break-all}
+.res-url{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin:2px 0 4px;word-break:break-all}
+.fav{
+  position:relative;flex:0 0 auto;width:16px;height:16px;border-radius:4px;overflow:hidden;
+  display:inline-grid;place-items:center;background:var(--chip);color:var(--muted);
+  font-size:9.5px;font-weight:700;line-height:1;
+}
+.fav img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;opacity:0;transition:opacity .15s}
+.fav.has img{opacity:1}
+.fav.has .fav-letter{visibility:hidden}
 .res-snippet{margin:0;color:var(--fg);font-size:14px;opacity:.92;overflow-wrap:anywhere}
 .res-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
 .mini{
@@ -1853,6 +1861,22 @@ function enginesLabel() {
   return ok;
 }
 
+/* site icon: the site's real favicon, with the host's first letter as a fallback
+   while it loads or when the icon service has nothing for that domain */
+function favicon(host) {
+  const tile = el('span', { class: 'fav', 'aria-hidden': 'true' },
+    el('span', { class: 'fav-letter' }, (host[0] || '?').toUpperCase()));
+  if (!host) return tile;
+  const img = el('img', {
+    src: 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(host) + '.ico',
+    alt: '', width: 16, height: 16, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer',
+  });
+  img.addEventListener('load', () => { if (img.naturalWidth > 1) tile.classList.add('has'); });
+  img.addEventListener('error', () => img.remove());
+  tile.appendChild(img);
+  return tile;
+}
+
 function renderResult(r, list, shieldOn) {
   const host = siteKey(r.url);
   const verdict = shieldOn && list ? list.check(r.url, { pageUrl: location.href }) : { blocked: false };
@@ -1869,7 +1893,7 @@ function renderResult(r, list, shieldOn) {
 
   const body = el('div', {},
     title,
-    el('div', { class: 'res-url' }, r.shown || host),
+    el('div', { class: 'res-url' }, favicon(host), el('span', { class: 'res-host' }, r.shown || host)),
     r.snippet ? el('p', { class: 'res-snippet' }, r.snippet) : null,
     blocked ? el('div', { style: 'margin-top:8px' },
       el('span', { class: 'badge', title: (verdict.rules || []).join('\n') },

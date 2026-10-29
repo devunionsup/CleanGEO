@@ -165,6 +165,22 @@ function enginesLabel() {
   return ok;
 }
 
+/* site icon: the site's real favicon, with the host's first letter as a fallback
+   while it loads or when the icon service has nothing for that domain */
+function favicon(host) {
+  const tile = el('span', { class: 'fav', 'aria-hidden': 'true' },
+    el('span', { class: 'fav-letter' }, (host[0] || '?').toUpperCase()));
+  if (!host) return tile;
+  const img = el('img', {
+    src: 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(host) + '.ico',
+    alt: '', width: 16, height: 16, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer',
+  });
+  img.addEventListener('load', () => { if (img.naturalWidth > 1) tile.classList.add('has'); });
+  img.addEventListener('error', () => img.remove());
+  tile.appendChild(img);
+  return tile;
+}
+
 function renderResult(r, list, shieldOn) {
   const host = siteKey(r.url);
   const verdict = shieldOn && list ? list.check(r.url, { pageUrl: location.href }) : { blocked: false };
@@ -181,7 +197,7 @@ function renderResult(r, list, shieldOn) {
 
   const body = el('div', {},
     title,
-    el('div', { class: 'res-url' }, r.shown || host),
+    el('div', { class: 'res-url' }, favicon(host), el('span', { class: 'res-host' }, r.shown || host)),
     r.snippet ? el('p', { class: 'res-snippet' }, r.snippet) : null,
     blocked ? el('div', { style: 'margin-top:8px' },
       el('span', { class: 'badge', title: (verdict.rules || []).join('\n') },

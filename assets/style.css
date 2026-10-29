@@ -113,7 +113,15 @@ body:not(.home) .hero{display:none}
   font-weight:600;cursor:pointer;word-break:break-word;
 }
 .res-title:hover{text-decoration:underline}
-.res-url{font-size:12.5px;color:var(--muted);margin:2px 0 4px;word-break:break-all}
+.res-url{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin:2px 0 4px;word-break:break-all}
+.fav{
+  position:relative;flex:0 0 auto;width:16px;height:16px;border-radius:4px;overflow:hidden;
+  display:inline-grid;place-items:center;background:var(--chip);color:var(--muted);
+  font-size:9.5px;font-weight:700;line-height:1;
+}
+.fav img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;opacity:0;transition:opacity .15s}
+.fav.has img{opacity:1}
+.fav.has .fav-letter{visibility:hidden}
 .res-snippet{margin:0;color:var(--fg);font-size:14px;opacity:.92;overflow-wrap:anywhere}
 .res-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
 .mini{

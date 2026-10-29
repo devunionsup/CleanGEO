@@ -1,9 +1,20 @@
-/* CleanGEO — safe reader: fetch a third-party page through a text proxy, sanitize
-   the HTML and render it with no third-party scripts, frames or beacons.
-   Nothing of the original site executes, so its trackers and malware cannot. */
+/* CleanGEO — safe reader.
+
+   The page is fetched as HTML, stripped of everything that can run or phone
+   home, and rendered inside a sandboxed frame with its own markup, its own
+   <link rel="stylesheet"> tags and its own pictures. The browser loads the
+   stylesheets and images itself, so the site keeps the design it was built
+   with; the frame has no allow-scripts, so nothing on the page executes. */
 
 const READER = 'https://r.jina.ai/';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+/* Ordered by how faithfully each route hands back the page's own markup. A
+   proxy that answers with something else (cache pages, error screens) is
+   rejected by matchesHost, so a wrong page is never rendered as the site. */
+const PROXIES = [
+  (u) => READER + u,
+  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+];
 
 const ttl = 10 * 60 * 1000;
 const memory = new Map();
@@ -14,97 +25,95 @@ function ctrl(ms) {
   return { signal: c.signal, done: () => clearTimeout(timer) };
 }
 
-const CHALLENGE = /just a moment|attention required|performing security verification|checking your browser|d dos protection|verify you are human|enable javascript and cookies/i;
+const CHALLENGE = /just a moment|attention required|performing security verification|checking your browser|verify you are human|enable javascript and cookies/i;
 
-function looksLikeChallenge(text, title) {
+export function looksLikeChallenge(text, title) {
   const head = String(text || '').slice(0, 1200);
   if (CHALLENGE.test(head)) return true;
-  if (String(title || '').trim().length < 24 && CHALLENGE.test(title || '')) return true;
-  return false;
+  return String(title || '').trim().length < 24 && CHALLENGE.test(title || '');
 }
 
-export function sanitize(doc, baseUrl) {
-  const base = baseUrl || doc.baseURI || '';
-  const resolve = (v) => { try { return new URL(v, base).href; } catch (e) { return ''; } };
-  const kill = ['script', 'noscript', 'style', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet',
-    'form', 'input', 'button', 'select', 'textarea', 'video', 'audio', 'source', 'track',
-    'svg', 'canvas', 'link', 'meta', 'base', 'template', 'nav', 'aside', 'footer', 'header',
-    '.navbox', '.vertical-navbox', '.navbox-styles', '#catlinks', '.mw-editsection', '.reference',
-    '.vector-header', '#p-lang', '.sidebar', '.toc', '#toc', '.mw-jump-link', '.noprint'];
-  for (const sel of kill) doc.querySelectorAll(sel).forEach(n => n.remove());
+const DROP = ['script', 'noscript', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet',
+  'template', 'portal', 'video', 'audio', 'source', 'track', 'base',
+  'link[rel~="preconnect"]', 'link[rel~="preload"]', 'link[rel~="prefetch"]',
+  'link[rel~="dns-prefetch"]', 'link[rel~="manifest"]'];
 
-  doc.querySelectorAll('*').forEach(el => {
-    for (const attr of [...el.attributes]) {
-      const n = attr.name.toLowerCase();
-      const v = String(attr.value || '');
-      if (n.startsWith('on') || n === 'srcdoc' || n === 'ping') el.removeAttribute(attr.name);
-      else if (n === 'style' && /url\s*\(|expression|javascript:/i.test(v)) el.removeAttribute(attr.name);
-      else if ((n === 'src' || n === 'srcset' || n === 'poster' || n === 'background' ||
-        n === 'action' || n === 'data-src' || n === 'formaction')) {
-        // relative resources are resolved against the page, not dropped: the
-        // block list gets an absolute URL to judge
-        const parts = n === 'srcset' ? v.split(',').map(p => p.trim()).filter(Boolean) : [v];
-        const resolved = parts.map(p => resolve(p.split(/\s+/)[0])).filter(Boolean);
-        if (!resolved.length || resolved.some(u => !/^(https?:|data:image\/)/i.test(u))) el.removeAttribute(attr.name);
-        else if (n === 'srcset') el.setAttribute(n, resolved.join(', '));
-        else el.setAttribute(n, resolved[0]);
-      } else if (n === 'href' && /^javascript:/i.test(v.trim())) el.removeAttribute(attr.name);
+/* The page keeps its structure, its classes, its inline styles, its inline
+   <style> blocks and its <link rel="stylesheet"> files. Only what can execute,
+   navigate on its own or auto-load media is removed. */
+export function sanitize(doc) {
+  for (const sel of DROP) doc.querySelectorAll(sel).forEach(n => n.remove());
+
+  doc.querySelectorAll('meta[http-equiv]').forEach(n => {
+    if (/refresh|content-security|cookie/i.test(n.getAttribute('http-equiv') || '')) n.remove();
+  });
+  // a phone-sized viewport, so a desktop-only layout is not shoved into 428px
+  doc.querySelectorAll('meta[name="viewport"], meta[name="referrer"]').forEach(n => n.remove());
+
+  doc.querySelectorAll('*').forEach(node => {
+    for (const attr of [...node.attributes]) {
+      const name = attr.name.toLowerCase();
+      const value = String(attr.value || '');
+      if (name.startsWith('on') || name === 'srcdoc' || name === 'ping' ||
+        name === 'integrity' || name === 'nonce') node.removeAttribute(attr.name);
+      else if (name === 'href' && /^\s*javascript:/i.test(value)) node.removeAttribute(attr.name);
     }
   });
-  pruneLinkBlocks(doc);
+
+  doc.querySelectorAll('form').forEach(f => {
+    f.removeAttribute('action');
+    f.setAttribute('onsubmit', 'return false');
+  });
+
+  // Many sites ship their real content hidden and reveal it from JavaScript.
+  // With the scripts gone that content would never appear, so a large hidden
+  // block is shown — a small one (a modal, a cookie banner) stays hidden.
+  doc.querySelectorAll('[style*="display"], [hidden]').forEach(node => {
+    const hiddenNow = node.hasAttribute('hidden') || /display\s*:\s*none/i.test(node.getAttribute('style') || '');
+    if (!hiddenNow) return;
+    if ((node.textContent || '').trim().length < 400 && node.querySelectorAll('img').length < 3) return;
+    node.removeAttribute('hidden');
+    const style = (node.getAttribute('style') || '').replace(/display\s*:\s*none\s*;?/gi, '');
+    if (style.trim()) node.setAttribute('style', style); else node.removeAttribute('style');
+  });
+
+  // lazy-loading is the site's own script swapping data-src for src; with the
+  // script gone the picture must be shown from the attribute it was parked in
+  const LAZY = ['data-src', 'data-original', 'data-lazy-src', 'data-lazy', 'data-url', 'data-image'];
+  doc.querySelectorAll('img, source').forEach(node => {
+    if (!node.getAttribute('src')) {
+      for (const attr of LAZY) {
+        const value = node.getAttribute(attr);
+        if (value && value.trim()) { node.setAttribute('src', value.trim()); break; }
+      }
+    }
+    if (!node.getAttribute('srcset')) {
+      const set = node.getAttribute('data-srcset') || node.getAttribute('data-lazy-srcset');
+      if (set && set.trim()) node.setAttribute('srcset', set.trim());
+    }
+  });
   return doc;
 }
 
-/* menus, language switchers and nav boxes are link soup: drop the blocks whose
-   text is mostly anchor labels, keeping real prose intact */
-function pruneLinkBlocks(doc) {
-  const blocks = [...doc.body.querySelectorAll('div,ul,ol,section,table,tbody,tr')].reverse();
-  for (const node of blocks) {
-    if (!node.isConnected) continue;
-    const anchors = node.querySelectorAll('a');
-    if (anchors.length < 8) continue;
-    const text = (node.textContent || '').trim().length;
-    if (!text) continue;
-    let linkText = 0;
-    for (const a of anchors) linkText += (a.textContent || '').trim().length;
-    // only drop pure navigation: dense links and almost no prose between them
-    if (linkText / text > 0.75 && text / anchors.length < 30) node.remove();
-  }
-}
+/* the frame's own head: a base for relative URLs, a phone viewport, and the
+   reader's shield stylesheet */
+export function prepare(doc, url, { shieldCss = '' } = {}) {
+  const head = doc.head || doc.createElement('head');
+  if (!doc.head) doc.documentElement.insertBefore(head, doc.documentElement.firstChild);
 
-/* pick the part of the page that actually holds the article */
-function contentRoot(doc) {
-  const candidates = ['article', '.mw-parser-output', '#mw-content-text', 'main', '[role="main"]',
-    '#content', '.entry-content', '.post-content', '.article-body', 'body'];
-  let best = null;
-  let bestScore = 0;
-  for (const sel of candidates) {
-    const node = doc.querySelector(sel);
-    if (!node) continue;
-    let score = 0;
-    for (const p of node.querySelectorAll('p')) {
-      const t = (p.textContent || '').trim();
-      if (t.length > 50) score += t.length;
-    }
-    if (!score) score = (node.textContent || '').trim().length;
-    if (score > bestScore) { bestScore = score; best = node; }
-  }
-  return best || doc.body;
-}
+  const base = doc.createElement('base');
+  base.setAttribute('href', url);
+  head.insertBefore(base, head.firstChild);
 
-export function absolutize(doc, baseUrl) {
-  doc.querySelectorAll('a[href]').forEach(a => {
-    try { a.setAttribute('href', new URL(a.getAttribute('href'), baseUrl).href); }
-    catch (e) { a.removeAttribute('href'); }
-    a.setAttribute('rel', 'noopener noreferrer');
-  });
-  doc.querySelectorAll('img[src]').forEach(img => {
-    try { img.setAttribute('src', new URL(img.getAttribute('src'), baseUrl).href); } catch (e) { img.removeAttribute('src'); }
-    img.removeAttribute('srcset');
-    img.setAttribute('referrerpolicy', 'no-referrer');
-    img.setAttribute('loading', 'lazy');
-    img.setAttribute('decoding', 'async');
-  });
+  const viewport = doc.createElement('meta');
+  viewport.setAttribute('name', 'viewport');
+  viewport.setAttribute('content', 'width=device-width, initial-scale=1');
+  head.insertBefore(viewport, head.firstChild);
+
+  const style = doc.createElement('style');
+  style.id = 'cg-shield';
+  style.textContent = shieldCss + '\nimg[data-cg-blocked],iframe[data-cg-blocked]{display:none!important}';
+  head.appendChild(style);
   return doc;
 }
 
@@ -139,92 +148,135 @@ export function mdToHtml(md) {
   return out.join('\n');
 }
 
+function textOf(raw) {
+  const doc = new DOMParser().parseFromString(raw, 'text/html');
+  return {
+    doc,
+    title: (doc.title || '').trim(),
+    text: (doc.body ? doc.body.textContent : '').replace(/\s+/g, ' ').trim(),
+  };
+}
+
+function markdownPage(md, url) {
+  const titleM = md.match(/^Title:\s*(.+)$/m);
+  const idx = md.indexOf('Markdown Content:');
+  const body = idx >= 0 ? md.slice(idx + 'Markdown Content:'.length) : md;
+  return {
+    title: (titleM ? titleM[1].trim() : url),
+    html: '<!doctype html>' + mdToHtml(body),
+    text: body.replace(/\s+/g, ' ').trim(),
+    url,
+    via: 'md',
+  };
+}
+
+async function fetchRaw(url, { timeoutMs = 12000 } = {}) {
+  const host = (() => { try { return new URL(url).host.replace(/^www\./, ''); } catch (e) { return ''; } })();
+
+  const fromProxy = async (make) => {
+    const c = ctrl(timeoutMs);
+    try {
+      const r = await fetch(make(url), { headers: { 'x-respond-with': 'html' }, signal: c.signal });
+      const raw = r.ok ? await r.text() : '';
+      if (!raw || !/<html|<body|<!doctype/i.test(raw.slice(0, 600))) throw new Error('HTTP ' + r.status);
+      return raw;
+    } finally { c.done(); }
+  };
+
+  const errors = [];
+  for (const make of PROXIES) {
+    try {
+      const raw = await fromProxy(make);
+      // a proxy that answers with a cache page or an error page is not the site
+      if (matchesHost(raw, host)) return raw;
+      errors.push(new Error('სხვა გვერდი'));
+    } catch (e) { errors.push(e); }
+  }
+  return { error: errors[errors.length - 1] || new Error('პროქსი ვერ პასუხობს') };
+}
+
+/* does this HTML really belong to the requested host? Only absolute URLs are
+   evidence — a relative one would resolve against whatever was requested and
+   always "match". */
+function matchesHost(raw, host) {
+  if (!host) return true;
+  const doc = new DOMParser().parseFromString(raw, 'text/html');
+  const claims = [];
+  const canonical = doc.querySelector('link[rel="canonical"], meta[property="og:url"]');
+  if (canonical) claims.push(canonical.getAttribute('href') || canonical.getAttribute('content') || '');
+  const base = doc.querySelector('base[href]');
+  if (base) claims.push(base.getAttribute('href') || '');
+  doc.querySelectorAll('link[href], img[src], script[src]').forEach((node, i) => {
+    if (i < 12) claims.push(node.getAttribute('href') || node.getAttribute('src') || '');
+  });
+
+  const absolute = claims.filter(c => /^https?:\/\//i.test(c));
+  if (!absolute.length) return true;   // nothing to go on: let the content decide
+  for (const claim of absolute) {
+    try {
+      const claimHost = new URL(claim).host.replace(/^www\./, '');
+      if (claimHost === host || claimHost.endsWith('.' + host) || host.endsWith('.' + claimHost)) return true;
+    } catch (e) { /* ignore a broken claim */ }
+  }
+  return false;
+}
+
 /**
- * @returns {Promise<{title,html,text,url,via}>}
+ * @returns {Promise<{title,html,text,url,via}>}  html is a whole document
  */
-export async function fetchReadable(url, { timeoutMs = 18000 } = {}) {
+export async function fetchReadable(url, { isBlocked = null, shieldCss = '' } = {}) {
   const hit = memory.get(url);
   if (hit && Date.now() - hit.at < ttl) return hit.value;
 
   let lastErr = null;
 
-  // 1) HTML through the reader proxy — lets us apply cosmetic filter rules
+  const finish = (raw, via) => {
+    const { doc, title, text } = textOf(raw);
+    if (looksLikeChallenge(text, title)) throw new Error('საიტი იცავს თავს ბოტებისგან');
+    sanitize(doc);
+    prepare(doc, url, { shieldCss });
+    const value = {
+      title: title || url,
+      html: '<!doctype html>' + doc.documentElement.outerHTML,
+      text,
+      url,
+      via,
+    };
+    if (!/<body/i.test(value.html)) throw new Error('ცარიელი გვერდი');
+    memory.set(url, { at: Date.now(), value });
+    return value;
+  };
+
+  // 1) the page's own HTML through a proxy: real markup, real design
+  const direct = await fetchRaw(url);
+  if (typeof direct === 'string') {
+    try { return finish(direct, 'html'); } catch (e) { lastErr = e; }
+  } else lastErr = direct.error;
+
+  // 2) the same through the reader proxy, which renders the page first
   try {
     const c = ctrl(16000);
     const r = await fetch(READER + encodeURIComponent(url), {
       headers: { 'x-respond-with': 'html' },
       signal: c.signal,
     });
+    const raw = r.ok ? await r.text() : '';
     c.done();
-    if (r.ok) {
-      const raw = await r.text();
-      if (!/Attention Required! \| Cloudflare|Just a moment\.\.\./i.test(raw.slice(0, 800))) {
-        const doc = new DOMParser().parseFromString(raw, 'text/html');
-        const title = (doc.title || '').trim() || url;
-        sanitize(doc, url);
-        absolutize(doc, url);
-        // the page must be able to see what the list hides, so keep its classes,
-        // ids and inline styles from here on; the app removes what the list targets
-        const src = contentRoot(doc);
-        let html = src ? src.innerHTML : '';
-        const text = src ? (src.textContent || '').replace(/\s+/g, ' ').trim() : '';
-        if (text.length > 60 && !looksLikeChallenge(text, title)) {
-          const value = { title, html, text, url, via: 'html' };
-          memory.set(url, { at: Date.now(), value });
-          return value;
-        }
-        if (looksLikeChallenge(text, title)) lastErr = new Error('საიტი იცავს თავს ბოტებისგან');
-      }
-    }
-  } catch (e) { lastErr = e; console.warn('CleanGEO reader html route:', e && e.message); }
+    if (raw) { try { return finish(raw, 'html'); } catch (e) { lastErr = e; } }
+  } catch (e) { lastErr = e; }
 
-  // 2) The page's own HTML through a CORS proxy: the real markup, so the
-  //    block list still sees what is there. Scripts are stripped either way.
+  // 3) Markdown fallback — text and pictures, no design
   try {
-    const c = ctrl(15000);
-    const r = await fetch(CORS_PROXY + encodeURIComponent(url), { signal: c.signal });
-    c.done();
-    if (r.ok) {
-      const raw = await r.text();
-      if (raw && !/Just a moment\.\.\.|Attention Required! \| Cloudflare|cf-browser-verification/i.test(raw.slice(0, 1500))) {
-        const doc = new DOMParser().parseFromString(raw, 'text/html');
-        const title = (doc.title || '').trim() || url;
-        sanitize(doc, url);
-        absolutize(doc, url);
-        const src = contentRoot(doc);
-        const html = src ? src.innerHTML : '';
-        const text = src ? (src.textContent || '').replace(/\s+/g, ' ').trim() : '';
-        if (text.length > 60 && !looksLikeChallenge(text, title)) {
-          const value = { title, html, text, url, via: 'html' };
-          memory.set(url, { at: Date.now(), value });
-          return value;
-        }
-        if (looksLikeChallenge(text, title)) lastErr = new Error('საიტი იცავს თავს ბოტებისგან');
-      }
-    }
-  } catch (e) { lastErr = e; console.warn('CleanGEO reader direct route:', e && e.message); }
-
-  // 3) Markdown fallback — pure text, even safer
-  try {
-    const c = ctrl(timeoutMs);
+    const c = ctrl(16000);
     const r = await fetch(READER + encodeURIComponent(url), { signal: c.signal });
+    const md = r.ok ? await r.text() : '';
     c.done();
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const md = await r.text();
-    const titleM = md.match(/^Title:\s*(.+)$/m);
-    const bodyIdx = md.indexOf('Markdown Content:');
-    const body = bodyIdx >= 0 ? md.slice(bodyIdx + 'Markdown Content:'.length) : md;
-    if (looksLikeChallenge(body, titleM ? titleM[1] : '')) throw new Error('საიტი იცავს თავს ბოტებისგან');
-    const value = {
-      title: (titleM ? titleM[1].trim() : url),
-      html: mdToHtml(body),
-      text: body.replace(/\s+/g, ' ').trim(),
-      url,
-      via: 'md',
-    };
-    memory.set(url, { at: Date.now(), value });
-    return value;
-  } catch (e) { lastErr = e; console.warn('CleanGEO reader md route:', e && e.message); }
+    if (!md) throw new Error('HTTP ' + r.status);
+    const page = markdownPage(md, url);
+    if (looksLikeChallenge(page.text, page.title)) throw new Error('საიტი იცავს თავს ბოტებისგან');
+    memory.set(url, { at: Date.now(), value: page });
+    return page;
+  } catch (e) { lastErr = e; }
 
   throw lastErr || new Error('გვერდი ვერ ჩაიტვირთა');
 }

@@ -258,7 +258,85 @@ function chooseOpen(r) {
   openSmart(r.url);
 }
 
+
 /* ---------- reader ---------- */
+
+/* The page keeps its own markup, its classes, its inline styles, its <style>
+   blocks, its linked stylesheets and its pictures — and renders inside a
+   sandboxed frame, so the design is the site's own. The frame has no
+   allow-scripts: no script of the page can run. */
+function buildReaderFrame(doc, url, report, list) {
+  const head = doc.head || doc.createElement('head');
+  if (!doc.head) doc.documentElement.insertBefore(head, doc.documentElement.firstChild);
+
+  // relative URLs (pictures, fonts, CSS @import) resolve against the site
+  const base = doc.createElement('base');
+  base.setAttribute('href', url);
+  head.insertBefore(base, head.firstChild);
+
+  const viewport = doc.createElement('meta');
+  viewport.setAttribute('name', 'viewport');
+  viewport.setAttribute('content', 'width=device-width, initial-scale=1');
+  head.appendChild(viewport);
+
+  const css = [];
+  if (settings().shield && settings().cosmetic) css.push(...report.css);
+  // the frame must grow with the page, not with the screen: a site's
+  // `html,body{height:100%;overflow:hidden}` would clip everything below it
+  css.push('html,body{height:auto!important;min-height:1px;overflow:visible!important}');
+  css.push('html{overflow-x:hidden!important}');
+  css.push('[data-cg-blocked]{display:none!important}');
+  const style = doc.createElement('style');
+  style.id = 'cg-shield';
+  style.textContent = css.join('\n');
+  head.appendChild(style);
+
+  const frame = document.createElement('iframe');
+  frame.className = 'cg-frame';
+  frame.setAttribute('sandbox', 'allow-same-origin');
+  frame.setAttribute('referrerpolicy', 'no-referrer');
+  frame.setAttribute('loading', 'eager');
+  frame.srcdoc = '<!doctype html>' + doc.documentElement.outerHTML;
+
+  frame.addEventListener('load', () => {
+    const inner = frame.contentDocument;
+    if (!inner) return;
+    const fit = () => {
+      const h = Math.max(inner.documentElement.scrollHeight, inner.body ? inner.body.scrollHeight : 0, inner.body ? inner.body.offsetHeight : 0);
+      if (h > 80) frame.style.height = h + 'px';
+    };
+    fit();
+    // pictures and fonts arrive after the markup: keep the frame as tall as the page
+    try { new ResizeObserver(fit).observe(inner.documentElement); } catch (e) { /* older engine */ }
+    frame.contentWindow.addEventListener('load', fit);
+    setTimeout(fit, 600);
+    setTimeout(fit, 1800);
+    wireFrameLinks(inner, url, list);
+  });
+  return frame;
+}
+
+/* a link inside the page opens in the reader, never as an unfiltered navigation
+   of the frame; a form cannot be submitted at all */
+function wireFrameLinks(inner, pageUrl, list) {
+  inner.addEventListener('click', (ev) => {
+    const a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+    if (!a) return;
+    ev.preventDefault();
+    let href = a.getAttribute('href') || '';
+    try { href = new URL(href, pageUrl).href; } catch (e) { return; }
+    if (!/^https?:/i.test(href)) return;
+    const verdict = settings().shield ? list.check(href, { pageUrl }) : { blocked: false };
+    if (verdict.blocked && !verdict.allowedBy) {
+      if (!settings().warn || confirm(`⛔ ${siteKey(href)} ბლოკავს AdGuard წესი: ${(verdict.rules || []).join(', ') || verdict.reason}. გავხსნათ?`)) {
+        openDirect(href, { quiet: true });
+      }
+      return;
+    }
+    openReader(href);
+  }, true);
+  inner.addEventListener('submit', (ev) => ev.preventDefault(), true);
+}
 
 /* Everything the reader shows goes through the block list here: the page's own
    address, its pictures and styles, every link, and every element whose id or
@@ -410,7 +488,8 @@ async function openReader(url) {
   const reader = $('#reader');
   const body = $('#readerBody');
   const badge = $('#readerBlocked');
-  body.replaceChildren(el('div', { class: 'empty' }, 'იტვირთება…'));
+    body.replaceChildren(el('div', { class: 'empty' }, 'იტვირთება…'));
+    body.classList.remove('has-frame');
   if (badge) { badge.hidden = true; badge.textContent = ''; badge.title = ''; }
   $('#readerTitle').textContent = siteKey(url);
   $('#readerUrl').textContent = url;
@@ -425,6 +504,7 @@ async function openReader(url) {
   const pageVerdict = settings().shield ? list.check(url, { pageUrl: url }) : { blocked: false };
   if (pageVerdict.blocked && !pageVerdict.allowedBy) {
     body.replaceChildren(blockedPageCard(url, pageVerdict));
+    body.classList.remove('has-frame');
     return;
   }
 
@@ -433,15 +513,26 @@ async function openReader(url) {
     if (token !== readerToken) return;
     readability[siteKey(url)] = true;
     $('#readerTitle').textContent = page.title;
-    const doc = el('div', { class: 'doc' });
-    doc.innerHTML = page.html;
 
-    // every element the list targets, and every resource it blocks, is dealt
-    // with before anything is attached to the document
-    const report = filterReaderDom(doc, url, list);
-    body.replaceChildren();
-    applyReaderCss(report.css);
-    body.appendChild(doc);
+    let report;
+    if (page.via === 'html') {
+      // the page as the site built it, filtered, inside the sandboxed frame
+      const pageDoc = new DOMParser().parseFromString(page.html, 'text/html');
+      report = filterReaderDom(pageDoc, url, list);
+      applyReaderCss([]);
+      body.replaceChildren(buildReaderFrame(pageDoc, url, report, list));
+      body.classList.add('has-frame');
+    } else {
+      const doc = el('div', { class: 'doc' });
+      doc.innerHTML = page.html;
+      report = filterReaderDom(doc, url, list);
+      body.replaceChildren();
+      applyReaderCss(report.css);
+      body.appendChild(doc);
+      attachLinkHandlers(doc, url, list);
+      if (!page.text || page.text.length < 120) throw new Error('გვერდის ტექსტი ვერ ამოიკითხა');
+    }
+
     if (badge && settings().shield && (report.elements || report.resources)) {
       badge.hidden = false;
       badge.textContent = `🛡️ −${report.elements + report.resources}`;
@@ -449,29 +540,7 @@ async function openReader(url) {
     }
     const sel = getSelection();
     if (sel) sel.removeAllRanges();
-    doc.querySelectorAll('a[href]').forEach(a => {
-      const href = a.getAttribute('href');
-      if (!href || !/^https?:/i.test(href)) { a.removeAttribute('href'); return; }
-      a.removeAttribute('target');
-      // a link whose target the list blocks is shown as such, not offered
-      const verdict = settings().shield ? list.check(href, { pageUrl: url }) : { blocked: false };
-      if (verdict.blocked && !verdict.allowedBy) {
-        a.setAttribute('data-cg-blocked', (verdict.rules || []).join(' ') || verdict.reason || 'blocked');
-        a.setAttribute('title', '⛔ ბლოკავს AdGuard წესი: ' + ((verdict.rules || [])[0] || verdict.reason || ''));
-        a.classList.add('cg-blocked-link');
-      }
-      a.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        if (verdict.blocked) {
-          if (settings().warn && !confirm(`⛔ ${siteKey(href)} ბლოკავს AdGuard წესი: ${(verdict.rules || []).join(', ') || verdict.reason}. გავხსნათ?`)) return;
-          openDirect(href, { quiet: true });
-          return;
-        }
-        openReader(href);
-      });
-    });
     body.scrollTop = 0;
-    if (!page.text || page.text.length < 120) throw new Error('გვერდის ტექსტი ვერ ამოიკითხა');
   } catch (e) {
     if (token !== readerToken) return;
     const host = siteKey(url);
@@ -493,6 +562,30 @@ async function openReader(url) {
     }
     body.replaceChildren(el('div', { class: 'empty' }, ...kids));
   }
+}
+
+function attachLinkHandlers(doc, pageUrl, list) {
+  doc.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (!href || !/^https?:/i.test(href)) { a.removeAttribute('href'); return; }
+    a.removeAttribute('target');
+    // a link whose target the list blocks is shown as such, not offered
+    const verdict = settings().shield ? list.check(href, { pageUrl }) : { blocked: false };
+    if (verdict.blocked && !verdict.allowedBy) {
+      a.setAttribute('data-cg-blocked', (verdict.rules || []).join(' ') || verdict.reason || 'blocked');
+      a.setAttribute('title', '⛔ ბლოკავს AdGuard წესი: ' + ((verdict.rules || [])[0] || verdict.reason || ''));
+      a.classList.add('cg-blocked-link');
+    }
+    a.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (verdict.blocked) {
+        if (settings().warn && !confirm(`⛔ ${siteKey(href)} ბლოკავს AdGuard წესი: ${(verdict.rules || []).join(', ') || verdict.reason}. გავხსნათ?`)) return;
+        openDirect(href, { quiet: true });
+        return;
+      }
+      openReader(href);
+    });
+  });
 }
 
 function closeReader() {

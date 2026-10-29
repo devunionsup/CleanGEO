@@ -171,12 +171,27 @@ function favicon(host) {
   const tile = el('span', { class: 'fav', 'aria-hidden': 'true' },
     el('span', { class: 'fav-letter' }, (host[0] || '?').toUpperCase()));
   if (!host) return tile;
+  const enc = encodeURIComponent(host);
+  // first the site's own icon via DuckDuckGo, then Google's cache for domains it misses
+  let step = 0;
+  const srcs = [
+    'https://icons.duckduckgo.com/ip3/' + enc + '.ico',
+    'https://www.google.com/s2/favicons?sz=64&domain=' + enc,
+  ];
   const img = el('img', {
-    src: 'https://icons.duckduckgo.com/ip3/' + encodeURIComponent(host) + '.ico',
-    alt: '', width: 16, height: 16, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer',
+    src: srcs[0], alt: '', width: 16, height: 16, loading: 'lazy', decoding: 'async', referrerpolicy: 'no-referrer',
   });
-  img.addEventListener('load', () => { if (img.naturalWidth > 1) tile.classList.add('has'); });
-  img.addEventListener('error', () => img.remove());
+  img.addEventListener('load', () => {
+    if (img.naturalWidth > 1) tile.classList.add('has');
+    else next();
+  });
+  img.addEventListener('error', next);
+  function next() {
+    step += 1;
+    if (step >= srcs.length) { img.remove(); return; }
+    tile.classList.remove('has');
+    img.src = srcs[step];
+  }
   tile.appendChild(img);
   return tile;
 }

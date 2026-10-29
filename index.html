@@ -1040,6 +1040,8 @@ async function ddgPage(q, start) {
   for (const a of links) {
     const href = decodeDdgLink(a.getAttribute('href') || '');
     if (!/^https?:\/\//i.test(href)) continue;
+    // DDG's own ad hop and help pages are not results
+    if (/^https?:\/\/([a-z0-9-]+\.)*duckduckgo\.com\/y\.js/i.test(href)) continue;
     let snippet = '';
     let shown = '';
     let row = a.closest('tr');

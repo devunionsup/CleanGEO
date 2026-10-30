@@ -36,3 +36,19 @@ jobs:
           done
           echo "deleted=$ok failed=$bad" >> "$GITHUB_STEP_SUMMARY"
           echo "done"
+      - name: Delete workflow runs except this one
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP: ${{ github.run_id }}
+        run: |
+          set -u
+          for page in 1 2 3 4 5 6 7 8 9 10; do
+            ids=$(gh api "/repos/$REPO/actions/runs?per_page=100&page=$page" --jq '.workflow_runs[].id' || true)
+            [ -z "$ids" ] && break
+            for r in $ids; do
+              [ "$r" = "$KEEP" ] && continue
+              gh api -X DELETE "/repos/$REPO/actions/runs/$r" >/dev/null 2>&1 && echo "deleted run $r" || echo "skip run $r"
+            done
+          done
+          echo "runs now: $(gh api \"/repos/$REPO/actions/runs?per_page=1\" --jq '.total_count')"

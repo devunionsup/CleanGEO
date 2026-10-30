@@ -165,7 +165,7 @@
 ! adjaranet.ai
 
 ||adjaranet.ai*mp4*$all
-
+||adjaranet.ai*asvl/preroll*$all
 
 
 ! croconet.cam

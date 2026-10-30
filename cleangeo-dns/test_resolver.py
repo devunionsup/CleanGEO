@@ -16,7 +16,7 @@ sys.path.insert(0, str(_HERE))
 
 
 def _support():
-    """Load tests/_load.py by path.
+    """Load testfixtures.py by path.
 
     Importing it as `tests._load` depends on package resolution the runner does
     not always give us, so the fixtures module is loaded explicitly. It returns
@@ -25,7 +25,7 @@ def _support():
     name = "cleangeo_support"
     if name in sys.modules:
         return sys.modules[name]
-    path = _HERE / "tests" / "_load.py"
+    path = _HERE / "testfixtures.py"
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module

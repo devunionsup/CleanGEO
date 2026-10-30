@@ -23,7 +23,15 @@ import sys
 import threading
 import time
 
-from tests._load import R
+if __package__ in (None, ""):
+    import sys as _sys
+
+    _sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+
+# Loaded by file path rather than "import resolver": the suite helper does the
+# same thing, and a bare import of that name makes the runner try to install a
+# PyPI package before the code even runs.
+from doh_server import R  # noqa: E402  (doh_server loads resolver.py itself)
 
 import doh_server
 import keys

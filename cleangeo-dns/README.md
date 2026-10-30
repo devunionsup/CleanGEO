@@ -20,11 +20,13 @@ browser --TLS 1.3--> your DoH server --DNSSEC-validated recursion--> authoritati
 | `server.py` | Entry point: `serve`, `check`. |
 | `cstp.py` | **Experimental**, isolated protocol. See `CSTP-SPEC.md`. Not on any production path. |
 | `THREAT-MODEL.md` | What is protected, what is exposed, what is not claimed. |
+| `TRAFFIC-ANALYSIS.md` | What an observer can still infer, and every countermeasure that was considered and rejected, with the reason. |
 | `DEPLOY.md` | Real deployment steps, systemd unit, verification. |
 | `CSTP-SPEC.md` | Byte-level protocol specification and the review it still needs. |
 
-Tests: `test_resolver.py` (20), `test_doh.py` (16), `test_cstp.py` (26),
-`test_integration.py` (27).
+Tests: `test_all.py` runs all four suites — 89 tests. Individually:
+`test_resolver.py` (20), `test_doh.py` (16), `test_cstp.py` (26),
+`test_integration.py` (27). `testfixtures.py` holds the shared DNSSEC fixtures.
 
 ## Quick start
 
@@ -45,13 +47,14 @@ python dns_probe.py dns.example.com --control dns.adguard-dns.com
 ## Tests
 
 ```
+python test_all.py           # everything, one total
 python test_resolver.py     # DNSSEC, wire format, delegation walking
 python test_doh.py          # HTTP/2 shapes, TLS policy, stats hygiene
 python test_cstp.py         # handshake, framing, replay, rotation
 python test_integration.py  # config gates, key hygiene, browser config
 ```
 
-The DNSSEC tests are not mocks: `tests/_load.py` generates real ECDSA P-256 keys
+The DNSSEC tests are not mocks: `testfixtures.py` generates real ECDSA P-256 keys
 and real RRSIG signatures, so a passing test means `cryptography` actually
 verified a signature. A forged signature must produce SERVFAIL, and a test
 asserts exactly that.

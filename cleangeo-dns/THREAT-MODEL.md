@@ -186,11 +186,12 @@ traffic hides metadata; it does not.
 Ask these, in this order:
 
 1. Do the tests actually exercise cryptography, or fake the verdict? (Here:
-   real ECDSA P-256 signatures in `tests/dnsfixtures.py`, real AEAD frames in
+   real ECDSA P-256 signatures in `testfixtures.py`, real AEAD frames in
    `test_cstp.py`.)
 2. Does a failed validation produce an answer anyway? (Here: no — SERVFAIL.)
 3. Is the key readable by other users? (Here: the server refuses to start.)
 4. Does a failure fall back to plaintext? (Here: neither the resolver nor the
    DoH client falls back.)
-4. Does the code claim privacy it cannot deliver? (Here: §9 and §10 say
-   otherwise, in the code as well as the docs.)
+5. Does the code claim privacy it cannot deliver? (Here: §9 and §10 say
+   otherwise, in the code as well as the docs. `TRAFFIC-ANALYSIS.md` lists
+   every countermeasure that was rejected and why.)

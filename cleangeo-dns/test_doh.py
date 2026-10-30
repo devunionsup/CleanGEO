@@ -24,7 +24,7 @@ def _support():
     if name in sys.modules:
         return sys.modules[name]
     spec = importlib.util.spec_from_file_location(
-        name, _HERE / "tests" / "_load.py")
+        name, _HERE / "testfixtures.py")
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)

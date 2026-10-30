@@ -26,10 +26,30 @@ Chromium specifics that matter and are easy to get wrong:
 """
 from __future__ import annotations
 
+import importlib.util
 import json
+import pathlib
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
+
+
+def load(name: str, filename: str = None):
+    """Import a sibling module by path.
+
+    A bare `import doh_client` makes the runner try to install a package with
+    that name before running anything, so modules here are loaded explicitly.
+    """
+    module = sys.modules.get(name)
+    if module is not None:
+        return module
+    path = pathlib.Path(__file__).resolve().parent / (filename or name + ".py")
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
 
 DEFAULT_ENDPOINT = "https://dns.cleangeo.net/dns-query"
 
@@ -138,10 +158,8 @@ def verify_live(*, endpoint: str | None = None, sample_name: str = "example.com"
     available in the current process (some sandboxes disable it), this reports
     that plainly rather than pretending a check ran.
     """
-    from tests._load import load
-
-    # Loaded by path: a bare `import doh_client` would make the runner look for a
-    # PyPI package of that name.
+    # Loaded by file path rather than by name: a bare `import doh_client` would
+    # make the runner look for a PyPI package of that name.
     doh_client = load("cleangeo_doh_client", "doh_client.py")
 
     endpoint = endpoint or DEFAULT_ENDPOINT

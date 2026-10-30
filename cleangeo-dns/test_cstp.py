@@ -21,7 +21,7 @@ def _helper():
     name = "cleango_dns_helper"
     if name in sys.modules:
         return sys.modules[name]
-    spec = _ilu.spec_from_file_location(name, _HERE / "tests" / "_load.py")
+    spec = _ilu.spec_from_file_location(name, _HERE / "testfixtures.py")
     module = _ilu.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)

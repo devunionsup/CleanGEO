@@ -38,7 +38,28 @@ from h2.events import (ConnectionTerminated, DataReceived, RequestReceived,
                        StreamEnded, StreamReset, WindowUpdated)
 from h2.exceptions import H2Error, ProtocolError
 
-from tests._load import R
+def _load_resolver():
+    """Load resolver.py from this file's directory.
+
+    Not `import resolver`: that name is a PyPI package candidate for the runner,
+    which tries to install it before the script starts. Loading by path is exact.
+    """
+    import importlib.util
+    import pathlib
+    import sys
+
+    cached = sys.modules.get("cleangeo_resolver")
+    if cached is not None:
+        return cached
+    path = pathlib.Path(__file__).resolve().parent / "resolver.py"
+    spec = importlib.util.spec_from_file_location("cleangeo_resolver", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["cleangeo_resolver"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+R = _load_resolver()
 
 DOH_PATH = "/dns-query"
 DNS_MESSAGE = "application/dns-message"

@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / 'assets'
-ORDER = ['blocklist.js', 'search.js', 'proxy.js', 'store.js', 'app.js']
+ORDER = ['blocklist.js', 'dns.js', 'search.js', 'proxy.js', 'store.js', 'app.js']
 
 
 def strip_module_syntax(src: str) -> str:

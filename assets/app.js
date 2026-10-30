@@ -1,5 +1,6 @@
 /* CleanGEO — app shell */
 import { webSearch } from './search.js';
+import { adguardLookup, ADGUARD_DOH } from './dns.js';
 import { fetchReadable } from './proxy.js';
 import {
   blockList, bootstrap, checkForUpdates, downloadList, changelog, source,
@@ -125,6 +126,23 @@ async function runSearch(q, { push = true } = {}) {
   state.engineInfo = data.engines;
   state.busy = false;
   renderResults();
+  if (settings().shield) resolveDns(state.results);
+}
+
+/* Every result host is resolved by AdGuard DNS — the only resolver the app
+   talks to. AdGuard answers a domain on its list with 0.0.0.0 (or ::), so the
+   answer is the verdict even when CleanGEO's own list has no rule for it. */
+async function resolveDns(items) {
+  if (!items.length) return;
+  const hosts = [...new Set(items.map(r => siteKey(r.url)).filter(Boolean))];
+  const done = await Promise.all(hosts.map(async h => [h, await adguardLookup(h)]));
+  const byHost = new Map(done);
+  let changed = false;
+  for (const r of items) {
+    const dns = byHost.get(siteKey(r.url));
+    if (dns) { r.dns = dns; changed = true; }
+  }
+  if (changed && items === state.results) renderResults();
 }
 
 function siteKey(url) {
@@ -147,7 +165,7 @@ function renderResults() {
     return;
   }
 
-  const blockedCount = items.filter(r => shieldOn && list.check(r.url, { pageUrl: location.href }).blocked).length;
+  const blockedCount = items.filter(r => shieldOn && (list.check(r.url, { pageUrl: location.href }).blocked || (r.dns && r.dns.blocked))).length;
   const metas = el('div', { class: 'result-meta' },
     el('strong', {}, String(items.length)),
     ' შედეგი',
@@ -193,7 +211,8 @@ function favicon(host) {
 function renderResult(r, list, shieldOn) {
   const host = siteKey(r.url);
   const verdict = shieldOn && list ? list.check(r.url, { pageUrl: location.href }) : { blocked: false };
-  const blocked = verdict.blocked;
+  const dns = shieldOn && r.dns && r.dns.blocked ? r.dns : null;
+  const blocked = verdict.blocked || !!dns;
 
   const title = el('a', {
     class: 'res-title', href: r.url, rel: 'noopener noreferrer',
@@ -210,8 +229,10 @@ function renderResult(r, list, shieldOn) {
     el('div', { class: 'res-url' }, favicon(host), el('span', { class: 'res-host' }, r.shown || host)),
     r.snippet ? el('p', { class: 'res-snippet' }, r.snippet) : null,
     blocked ? el('div', { style: 'margin-top:8px' },
-      el('span', { class: 'badge', title: (verdict.rules || []).join('\n') },
-        '⛔ AdGuard წესი: ' + ((verdict.rules && verdict.rules[0]) || verdict.reason || 'დაბლოკვა'))) : null,
+      el('span', { class: 'badge', title: verdict.blocked ? (verdict.rules || []).join('\n') : 'AdGuard DNS: ' + ((dns && dns.ips) || []).join(', ') + '\n' + ADGUARD_DOH },
+        verdict.blocked
+          ? '⛔ AdGuard წესი: ' + ((verdict.rules && verdict.rules[0]) || verdict.reason || 'დაბლოკვა')
+          : '⛔ AdGuard DNS: დაბლოკილი დომენი')) : null,
     actions);
 
   const row = el('article', { class: 'res' + (blocked ? ' blocked' : '') }, body);
@@ -350,9 +371,11 @@ const RESOURCE_TYPES = {
 
 /* the page itself is on the list: say so instead of rendering it */
 function blockedPageCard(url, verdict) {
+  const viaDns = !(verdict.rules || []).length && /AdGuard DNS/i.test(verdict.reason || '');
   const kids = [
     el('div', { style: 'font-size:28px' }, '⛔'),
-    el('div', { style: 'margin-top:8px;font-weight:600' }, siteKey(url) + ' დაბლოკილია CleanGEO სიით'),
+    el('div', { style: 'margin-top:8px;font-weight:600' },
+      siteKey(url) + (viaDns ? ' დაბლოკილია AdGuard DNS-ით' : ' დაბლოკილია CleanGEO სიით')),
     el('div', { style: 'margin-top:6px;opacity:.8' }, (verdict.rules || []).join('\n') || verdict.reason || ''),
   ];
   if (!settings().strict) {
@@ -507,6 +530,17 @@ async function openReader(url) {
     body.classList.remove('has-frame');
     return;
   }
+  // and AdGuard DNS has the last word: a sinkholed domain is blocked even when
+  // CleanGEO's own list says nothing about it
+  if (settings().shield) {
+    const dns = await adguardLookup(siteKey(url));
+    if (token !== readerToken) return;
+    if (dns.blocked) {
+      body.replaceChildren(blockedPageCard(url, { blocked: true, rules: [], reason: 'AdGuard DNS: ' + (dns.ips || []).join(', ') }));
+      body.classList.remove('has-frame');
+      return;
+    }
+  }
 
   try {
     const page = await fetchReadable(url);
@@ -656,10 +690,11 @@ function aboutNodes() {
   return [
     p('ჩვეულებრივი საძიებო სისტემა შედეგზე დაჭერისთანავე ატვირთავს საიტის სკრიპტებს, ტრეკერებსა და რეკლამებს. CleanGEO ამას არ აკეთებს.'),
     el('h3', {}, '1. ძებნა'),
-    p('შედეგები მოდის DuckDuckGo-დან და Bing-იდან. ყოველი შედეგი მოწმდება თქვენივე ბლოკ-ლისტით — საშიში დომენი მონიშნულია.'),
+    p('ძებნა ერთდროულად რამდენიმე საძიებო სისტემაში მიდის და შედეგები ერთ სიად იკრიბება — სახელებს არ ვაჩვენებთ, მხოლოდ შედეგებს. Safe Search გამორთულია ყველგან. ყოველი შედეგი მოწმდება ბლოკ-ლისტით — საშიში დომენი მონიშნულია.'),
     el('h3', {}, '2. დაცული გახსნა'),
     p('საიტი იხსნება ტექსტურ რეჟიმში: მისი JavaScript, iframe-ები, ფორმები, ტრეკერ-პიქსელები და რეკლამები არ მუშაობს. სიის CSS წესები რეკლამის ბლოკებს მალავს.'),
     el('h3', {}, '3. ბლოკ-ლისტი'),
+    p('დომენი მოწმდება ორივეგან: CleanGEO-ს სია და AdGuard DNS (dns.adguard-dns.com) — სხვა DNS არ გამოიყენება. AdGuard DNS დაბლოკილ დომენზე პასუხობს 0.0.0.0-ით, ამიტომ დაცვა მოქმედებს მაშინაც, როცა სიაში ეს დომენი ჯერ არ არის.'),
     p('გადაწყვეტილებას იღებს მხოლოდ AdGuard სინტაქსი — ის წესები, რომლებსაც AdGuard Pro იღებს: ||host^, @@ გამონაკლისი, $important, $document, $domain=, ## / #?# / #$# / #%#. ისეთი ოფციები, რომლებიც გვერდს არ ბლოკავს ($media, $popup, $third-party, $removeparam, $app...), გვერდს არ ხურავს; ბრაუზერისთვის დამახასიათებელი დაბლოკვის სხვა მექანიზმი აქ არ არის.'),
     p('სია იტვირთება GitHub-იდან და ავტომატურად შემოწმდება თქვენ მიერ არჩეული სიხშირით. თუ სიაში წესები დაემატა — დაემატება თქვენთანაც; თუ წაიშალა — წაიშლება თქვენთანაც. ცვლილებები ჩანს პარამეტრებში.'),
     el('h3', {}, '4. მოწყობილობები'),

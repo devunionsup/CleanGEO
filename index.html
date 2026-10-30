@@ -345,7 +345,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
   <div class="row" style="border-bottom:0;padding-bottom:4px">
     <div>CleanGEO ბლოკ-ლისტი<small id="sourceText"></small></div>
   </div>
-  <p class="hint" style="margin-top:0">სიის წყარო ფიქსირებულია და შეცვლა შეუძლებელია — CleanGEO-ს წესები ყოველთვის ჩართულია. საკუთარი ფილტრები დაამატეთ ქვემოთ.</p>
+  <p class="hint" style="margin-top:0">სიის წყარო ფიქსირებულია და შეცვლა შეუძლებელია — CleanGEO-ს წესები ყოველთვის ჩართულია. დომენების შემოწმება მიდის მხოლოდ AdGuard DNS-ით: dns.adguard-dns.com. საკუთარი ფილტრები დაამატეთ ქვემოთ.</p>
   <div style="display:flex;gap:8px;margin-top:10px">
     <button class="btn" id="checkNow" type="button" style="flex:1">ახლავე შემოწმება</button>
   </div>
@@ -937,6 +937,159 @@ function ruleReason(rule) {
 }
 
 
+/* ==== src: assets/dns.js ==== */
+/* CleanGEO — AdGuard DNS (DNS-over-HTTPS).
+
+   The app asks one resolver and one only: https://dns.adguard-dns.com/dns-query
+   (RFC 8484 wire format, GET with ?dns=<base64url>). AdGuard DNS answers a
+   domain it blocks with 0.0.0.0 (A) or :: (AAAA), so the answer itself is the
+   verdict — no other DNS provider is contacted, ever.
+
+   The endpoint sends no Access-Control-Allow-Origin, so a page on the web
+   cannot read it directly. The direct route is tried first; when the browser
+   refuses it, the very same AdGuard request is fetched through a public
+   pass-through relay (it only carries bytes, it is not a resolver). */
+
+const DOH = 'https://dns.adguard-dns.com/dns-query';
+const RELAY = 'https://api.allorigins.win/raw?url=';
+
+const A = 1;
+const AAAA = 28;
+
+const DNS_TTL = 10 * 60 * 1000;
+const dnsMemory = new Map();
+
+function ctrl(ms) {
+  const c = new AbortController();
+  const timer = setTimeout(() => c.abort(), ms);
+  return { signal: c.signal, done: () => clearTimeout(timer) };
+}
+
+function b64url(bytes) {
+  let raw = '';
+  for (const b of bytes) raw += String.fromCharCode(b);
+  return btoa(raw).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* a DNS question: one name, one type, recursion desired */
+function buildQuery(name, type) {
+  const out = [0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0];
+  for (const label of String(name).replace(/\.$/, '').split('.')) {
+    const bytes = Array.from(new TextEncoder().encode(label));
+    if (!label || bytes.length > 63) throw new Error('bad name');
+    out.push(bytes.length, ...bytes);
+  }
+  out.push(0, (type >> 8) & 255, type & 255, 0, 1);
+  return new Uint8Array(out);
+}
+
+/* read the answer section out of a DNS message: A and AAAA addresses */
+function parseAnswer(bytes) {
+  if (bytes.length < 12) return { rcode: -1, ips: [] };
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const rcode = bytes[3] & 15;
+  const questions = (bytes[4] << 8) | bytes[5];
+  const answers = (bytes[6] << 8) | bytes[7];
+  let off = 12;
+
+  const skipName = () => {
+    while (off < bytes.length) {
+      const len = bytes[off];
+      if (len === 0) { off += 1; return; }
+      if ((len & 0xc0) === 0xc0) { off += 2; return; }
+      off += len + 1;
+    }
+  };
+
+  for (let i = 0; i < questions && off < bytes.length; i++) { skipName(); off += 4; }
+
+  const ips = [];
+  for (let i = 0; i < answers; i++) {
+    skipName();
+    if (off + 10 > bytes.length) break;
+    const type = view.getUint16(off);
+    const rdlen = view.getUint16(off + 8);
+    const start = off + 10;
+    if (start + rdlen > bytes.length) break;
+    if (type === A && rdlen === 4) {
+      ips.push(`${bytes[start]}.${bytes[start + 1]}.${bytes[start + 2]}.${bytes[start + 3]}`);
+    } else if (type === AAAA && rdlen === 16) {
+      const parts = [];
+      for (let j = 0; j < 16; j += 2) parts.push(((bytes[start + j] << 8) | bytes[start + j + 1]).toString(16));
+      const ip = parts.join(':');
+      ips.push(/^(0:){7}0$/.test(ip) ? '::' : ip);
+    }
+    off = start + rdlen;
+  }
+  return { rcode, ips };
+}
+
+async function request(name, type, timeoutMs) {
+  const url = DOH + '?dns=' + b64url(buildQuery(name, type));
+  const headers = { accept: 'application/dns-message' };
+
+  const direct = ctrl(timeoutMs);
+  try {
+    const r = await fetch(url, { headers, signal: direct.signal, cache: 'no-store' });
+    if (r.ok) return { bytes: new Uint8Array(await r.arrayBuffer()), route: 'direct' };
+  } catch (e) { /* the endpoint sends no CORS header: fall through to the relay */ }
+  finally { direct.done(); }
+
+  const relay = ctrl(timeoutMs + 4000);
+  try {
+    const r = await fetch(RELAY + encodeURIComponent(url), { signal: relay.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return { bytes: new Uint8Array(await r.arrayBuffer()), route: 'relay' };
+  } finally { relay.done(); }
+}
+
+/* AdGuard's blocking answer: the sinkhole address, never a real server */
+function isSinkhole(ip) {
+  return ip === '0.0.0.0' || ip === '::' || ip === '127.0.0.1' || /^0+\.0+\.0+\.0+$/.test(ip);
+}
+
+/* Look a host up in AdGuard DNS. `blocked` is true when the answer is the
+   sinkhole address — that is AdGuard DNS saying the domain is on its list. */
+async function adguardLookup(host, { force = false } = {}) {
+  const name = String(host || '').trim().toLowerCase().replace(/\.$/, '');
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(name)) return { blocked: false, skipped: true, source: 'dns.adguard-dns.com' };
+
+  const hit = dnsMemory.get(name);
+  if (!force && hit && Date.now() - hit.at < DNS_TTL) return hit.result;
+
+  let ips = [];
+  let route = '';
+  let answer = null;
+  try {
+    answer = await request(name, A, 5000);
+    route = answer.route;
+    ips = parseAnswer(answer.bytes).ips;
+    if (!ips.length) {
+      const v6 = await request(name, AAAA, 5000);
+      route = route || v6.route;
+      ips = parseAnswer(v6.bytes).ips;
+    }
+  } catch (e) {
+    const failed = { blocked: false, error: String(e.message || e), source: 'dns.adguard-dns.com' };
+    dnsMemory.set(name, { at: Date.now(), result: failed });
+    return failed;
+  }
+
+  const blocked = ips.some(isSinkhole);
+  const result = {
+    blocked,
+    ips,
+    route,
+    source: 'dns.adguard-dns.com',
+    reason: blocked ? 'AdGuard DNS: ' + (ips.find(isSinkhole) || '0.0.0.0') : '',
+  };
+  dnsMemory.set(name, { at: Date.now(), result });
+  return result;
+}
+
+const ADGUARD_DOH = DOH;
+
+
 /* ==== src: assets/search.js ==== */
 /* CleanGEO — search backends (no API keys, all keyless) */
 
@@ -1505,6 +1658,290 @@ function matchesHost(raw, host) {
   return false;
 }
 
+/* ---------- YouTube ----------
+
+   youtube.com is one script-drawn app: with the scripts gone its pages are an
+   empty shell, so a generic reader shows a blank frame. Everything YouTube
+   draws is already in the HTML the proxy returns — ytInitialData and
+   ytInitialPlayerResponse — so this builds the page from that data instead:
+   search results, a channel's videos, one video's facts and its related list. */
+
+const YT_HOST = /(^|\.)(youtube\.com|youtube-nocookie\.com|youtu\.be)$/i;
+
+function isYouTube(url) {
+  try { return YT_HOST.test(new URL(url).host); } catch (e) { return false; }
+}
+
+/* the data is embedded as `name = {...};` — take the object itself, brace by
+   brace, so a `};` inside a description cannot cut it short */
+function ytJson(html, name) {
+  const at = html.indexOf(name);
+  if (at < 0) return null;
+  const start = html.indexOf('{', at);
+  if (start < 0) return null;
+  let depth = 0, str = false, escape = false;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (str) {
+      if (escape) escape = false;
+      else if (ch === '\\') escape = true;
+      else if (ch === '"') str = false;
+      continue;
+    }
+    if (ch === '"') str = true;
+    else if (ch === '{') depth++;
+    else if (ch === '}' && --depth === 0) {
+      try { return JSON.parse(html.slice(start, i + 1)); } catch (e) { return null; }
+    }
+  }
+  return null;
+}
+
+function ytText(node) {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (typeof node.simpleText === 'string') return node.simpleText;
+  if (typeof node.content === 'string') return node.content;
+  if (Array.isArray(node.runs)) return node.runs.map(r => (r && r.text) || '').join('');
+  return '';
+}
+
+/* the widest i.ytimg.com picture anywhere under a node: a picture element
+   carries several variants and only the last is worth showing */
+function ytPicture(node) {
+  const found = [];
+  const walk = (n) => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(walk); return; }
+    for (const key in n) {
+      const value = n[key];
+      if (key === 'url' && typeof value === 'string' && /^https:\/\/i\.ytimg\.com\//.test(value)) {
+        found.push({ url: value, width: Number(n.width) || 0 });
+      } else if (value && typeof value === 'object') walk(value);
+    }
+  };
+  walk(node);
+  if (!found.length) return '';
+  const widest = found.reduce((a, b) => (b.width >= a.width ? b : a));
+  return widest.url;
+}
+
+/* every video, playlist and channel the JSON mentions, in page order */
+function ytItems(data) {
+  const out = [];
+  const seen = new Set();
+  const push = (item) => {
+    if (!item || !item.id || seen.has(item.id)) return;
+    seen.add(item.id);
+    out.push(item);
+  };
+  const rows = (node) => {
+    const bits = [];
+    const walk = (n) => {
+      if (!n || typeof n !== 'object') return;
+      if (Array.isArray(n)) { n.forEach(walk); return; }
+      if (Array.isArray(n.metadataRows)) {
+        for (const row of n.metadataRows) {
+          const text = (row.metadataParts || []).map(part => ytText(part && part.text)).filter(Boolean).join(' · ');
+          if (text) bits.push(text);
+        }
+      }
+      for (const key in n) {
+        const value = n[key];
+        if (value && typeof value === 'object') walk(value);
+      }
+    };
+    walk(node);
+    return bits;
+  };
+  const picture = (id, size) => 'https://i.ytimg.com/vi/' + id + '/' + size + '.jpg';
+
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(walk); return; }
+
+    const v = node.videoRenderer;
+    if (v && v.videoId) {
+      push({
+        id: v.videoId, kind: 'video',
+        title: ytText(v.title),
+        by: ytText(v.ownerText) || ytText(v.longBylineText) || ytText(v.shortBylineText),
+        meta: [ytText(v.viewCountText) || ytText(v.shortViewCountText), ytText(v.publishedTimeText)].filter(Boolean).join(' · '),
+        time: ytText(v.lengthText),
+        thumb: ytPicture(v.thumbnail) || picture(v.videoId, 'hqdefault'),
+      });
+    }
+
+    const p = node.playlistVideoRenderer;
+    if (p && p.videoId) {
+      push({
+        id: p.videoId, kind: 'video',
+        title: ytText(p.title),
+        by: ytText(p.shortBylineText),
+        meta: ytText(p.videoInfo),
+        time: ytText(p.lengthText),
+        thumb: ytPicture(p.thumbnail) || picture(p.videoId, 'hqdefault'),
+      });
+    }
+
+    const s = node.shortsLockupViewModel;
+    if (s) {
+      const reel = s.onTap && s.onTap.innertubeCommand && s.onTap.innertubeCommand.reelWatchEndpoint;
+      const id = (reel && reel.videoId) || String(s.entityId || '').replace(/^shorts-shelf-item-/, '');
+      if (id) {
+        push({
+          id, kind: 'video', short: true,
+          title: ytText(s.overlayMetadata && s.overlayMetadata.primaryText),
+          meta: ytText(s.overlayMetadata && s.overlayMetadata.secondaryText),
+          thumb: ytPicture(s.thumbnailViewModel) || picture(id, 'oardefault'),
+        });
+      }
+    }
+
+    const l = node.lockupViewModel;
+    if (l && l.contentId) {
+      // newer pages drop contentType and leave only the id: 11 characters is a
+      // video, a leading PL/UU/OL is a list, UC a channel
+      const rawType = String(l.contentType || '');
+      const id = String(l.contentId);
+      const type = rawType || (id.length === 11 ? 'VIDEO' : /^(PL|UU|OL|FL)/.test(id) ? 'PLAYLIST' : /^UC/.test(id) ? 'CHANNEL' : '');
+      if (/VIDEO|PLAYLIST|SHORTS|PODCAST|CHANNEL/.test(type)) {
+        const meta = l.metadata && l.metadata.lockupMetadataViewModel;
+        const bits = rows(meta && meta.metadata);
+        push({
+          id: l.contentId,
+          kind: /PLAYLIST/.test(type) ? 'playlist' : /CHANNEL/.test(type) ? 'channel' : 'video',
+          short: /SHORTS/.test(type),
+          title: ytText(meta && meta.title),
+          by: bits[0] || '',
+          meta: bits.slice(1).join(' · '),
+          thumb: ytPicture(l.contentImage),
+        });
+      }
+    }
+
+    for (const key in node) {
+      const value = node[key];
+      if (value && typeof value === 'object') walk(value);
+    }
+  };
+  walk(data);
+  return out;
+}
+
+function ytEscape(value) {
+  return String(value == null ? '' : value).replace(/[&<>"]/g,
+    ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+}
+
+const YT_CSS = `*{box-sizing:border-box}html{background:#0e0e10}`
+  + `body{margin:0;padding:14px 14px 34px;font:15px/1.45 -apple-system,system-ui,"Noto Sans Georgian",sans-serif;color:#eceff3;background:#0e0e10;-webkit-text-size-adjust:100%}`
+  + `.cgyt-top{font-weight:700;font-size:14px;color:#ff5a5a;margin-bottom:2px}`
+  + `.cgyt-sub{color:#8f98a2;font-size:12.5px;margin:0 0 14px}`
+  + `.cgyt-h1{font-size:19px;line-height:1.3;margin:10px 0 6px;font-weight:700}`
+  + `.cgyt-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid #1e2126;text-decoration:none;color:inherit}`
+  + `.cgyt-item:last-child{border-bottom:0}`
+  + `.cgyt-thumb{flex:0 0 128px;width:128px;height:72px;border-radius:8px;overflow:hidden;background:#1a1d21;position:relative}`
+  + `.cgyt-thumb img{width:100%;height:100%;object-fit:cover;display:block}`
+  + `.cgyt-time{position:absolute;right:4px;bottom:4px;background:rgba(0,0,0,.8);border-radius:4px;padding:1px 4px;font-size:11px;color:#fff}`
+  + `.cgyt-txt{min-width:0;display:flex;flex-direction:column;gap:3px}`
+  + `.cgyt-title{font-size:14.5px;line-height:1.32;font-weight:600}`
+  + `.cgyt-meta{font-size:12.5px;color:#98a1ab}`
+  + `.cgyt-kind{font-size:11px;color:#7d8791;text-transform:uppercase;letter-spacing:.4px}`
+  + `.cgyt-note{margin:14px 0;padding:10px 12px;border-radius:10px;background:#191c21;color:#c8ced6;font-size:13px;line-height:1.45}`
+  + `.cgyt-hero{width:100%;border-radius:12px;display:block;background:#1a1d21}`
+  + `.cgyt-desc{white-space:pre-wrap;font-family:inherit;font-size:13.5px;line-height:1.5;margin:10px 0 0;color:#d6dbe2;word-break:break-word}`
+  + `.cgyt-sec{margin:22px 0 4px;font-size:15px;font-weight:700}`;
+
+function ytHref(item) {
+  if (item.kind === 'playlist') return 'https://www.youtube.com/playlist?list=' + encodeURIComponent(item.id);
+  if (item.kind === 'channel') return 'https://www.youtube.com/channel/' + encodeURIComponent(item.id);
+  return 'https://www.youtube.com/watch?v=' + encodeURIComponent(item.id);
+}
+
+function ytCard(item) {
+  const esc = ytEscape;
+  const thumb = item.thumb
+    ? '<img src="' + esc(item.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer">' : '';
+  const time = item.time ? '<span class="cgyt-time">' + esc(item.time) + '</span>' : '';
+  const meta = [item.by, item.meta].filter(Boolean).join(' · ');
+  const kind = item.kind === 'playlist' ? 'სია' : item.kind === 'channel' ? 'არხი' : item.short ? 'Shorts' : '';
+  return '<a class="cgyt-item" href="' + esc(ytHref(item)) + '">'
+    + '<span class="cgyt-thumb">' + thumb + time + '</span>'
+    + '<span class="cgyt-txt">'
+    + '<span class="cgyt-title">' + esc(item.title || item.id) + '</span>'
+    + (meta ? '<span class="cgyt-meta">' + esc(meta) + '</span>' : '')
+    + (kind ? '<span class="cgyt-kind">' + esc(kind) + '</span>' : '')
+    + '</span></a>';
+}
+
+/* the page the reader shows for any YouTube address */
+function ytPage(url, html) {
+  const esc = ytEscape;
+  const player = ytJson(html, 'ytInitialPlayerResponse');
+  const data = ytJson(html, 'ytInitialData');
+  const details = player && player.videoDetails;
+  const u = new URL(url);
+  const query = u.searchParams.get('search_query') || u.searchParams.get('q') || '';
+  let heading = 'YouTube';
+  let body = '';
+
+  if (details && details.videoId) {
+    heading = details.title || 'ვიდეო';
+    const seconds = Number(details.lengthSeconds) || 0;
+    const length = seconds ? Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') : '';
+    const views = details.viewCount ? Number(details.viewCount).toLocaleString('en-US') + ' ნახვა' : '';
+    const facts = [details.author, views, length].filter(Boolean).join(' · ');
+    const thumb = ytPicture(details.thumbnail) || ('https://i.ytimg.com/vi/' + details.videoId + '/hqdefault.jpg');
+    body = '<img class="cgyt-hero" src="' + esc(thumb) + '" alt="" referrerpolicy="no-referrer">'
+      + '<h1 class="cgyt-h1">' + esc(heading) + '</h1>'
+      + '<div class="cgyt-meta">' + esc(facts) + '</div>'
+      + '<div class="cgyt-note">ვიდეოს დაკვრას YouTube-ის სკრიპტები სჭირდება, ამიტომ დაცულ რეჟიმში ჩანს აღწერა და დაკავშირებული ვიდეოები — თვითონ ვიდეოს საყურებლად ზემოთ ↗ ღილაკს დააჭირე.</div>'
+      + (details.shortDescription ? '<div class="cgyt-desc">' + esc(details.shortDescription) + '</div>' : '');
+    const related = ytItems(data).filter(item => item.id !== details.videoId).slice(0, 12);
+    if (related.length) body += '<div class="cgyt-sec">დაკავშირებული</div>' + related.map(ytCard).join('');
+  } else {
+    const items = ytItems(data);
+    const chan = data && data.metadata && data.metadata.channelMetadataRenderer;
+    const playlist = data && data.metadata && data.metadata.playlistMetadataRenderer;
+    if (chan && chan.title) heading = chan.title;
+    else if (playlist && playlist.title) heading = playlist.title;
+    else if (query) heading = 'ძებნა: ' + query;
+    else {
+      // a channel's tab has no metadata block: its own address names it
+      const seg = u.pathname.split('/').filter(Boolean)[0] || '';
+      if (seg.startsWith('@')) heading = seg;
+      else if (seg === 'results') heading = u.searchParams.get('search_query') || 'ძებნა';
+      else if (u.pathname === '/feed/subscriptions') heading = 'გამოწერები';
+      else if (u.pathname.startsWith('/feed/')) heading = 'YouTube';
+    }
+
+    body = '<h1 class="cgyt-h1">' + esc(heading) + '</h1>'
+      + (chan && chan.description ? '<div class="cgyt-meta">' + esc(String(chan.description).slice(0, 220)) + '</div>' : '');
+    if (items.length) {
+      body += items.slice(0, 30).map(ytCard).join('');
+    } else {
+      body += '<div class="cgyt-note">ამ გვერდს YouTube მხოლოდ თავისი სკრიპტებით ხატავს (მთავარი გვერდი, ტრენდები, გამოწერები), ამიტომ დაცულ რეჟიმში ცარიელია. აქ იხსნება ძებნის შედეგები, არხები, ვიდეოები და დასაკრავი სიები — მთავარი გვერდისთვის კი ზემოთ ↗ ღილაკი გამოიყენე.</div>';    }
+  }
+
+  return '<!doctype html><html lang="ka"><head><meta charset="utf-8"><title>' + esc(heading) + '</title>'
+    + '<style>' + YT_CSS + '</style></head><body>'
+    + '<div class="cgyt-top">▶ YouTube</div>'
+    + '<div class="cgyt-sub">დაცული ხედი — სკრიპტების გარეშე</div>'
+    + body + '</body></html>';
+}
+
+async function ytFetch(url) {
+  const c = ctrl(18000);
+  let html = '';
+  try {
+    const r = await fetch(READER + encodeURIComponent(url), { headers: { 'x-respond-with': 'html' }, signal: c.signal });
+    html = r.ok ? await r.text() : '';
+  } finally { c.done(); }
+  if (!html) throw new Error('YouTube-მა არ უპასუხა');
+  return ytPage(url, html);
+}
+
 /**
  * @returns {Promise<{title,html,text,url,via}>}  html is a whole document
  */
@@ -1527,9 +1964,23 @@ async function fetchReadable(url, { isBlocked = null, shieldCss = '' } = {}) {
       via,
     };
     if (!/<body/i.test(value.html)) throw new Error('ცარიელი გვერდი');
+    // a page that draws itself entirely from its own scripts is an empty shell
+    // once they are gone: say so, instead of showing a blank frame
+    const shown = (doc.body ? doc.body.textContent : '').replace(/\s+/g, ' ').trim();
+    if (shown.length < 200 && !doc.querySelectorAll('img').length) {
+      throw new Error('გვერდი სკრიპტების გარეშე ცარიელია');
+    }
     memory.set(url, { at: Date.now(), value });
     return value;
   };
+
+  // 0) YouTube: its pages are drawn by its own scripts, so the reader builds
+  // them from the data YouTube ships inside the HTML (see above)
+  if (isYouTube(url)) {
+    try {
+      return finish(await ytFetch(url), 'html');
+    } catch (e) { lastErr = e; }
+  }
 
   // 1) the page's own HTML through a proxy: real markup, real design
   const direct = await fetchRaw(url);
@@ -2025,6 +2476,23 @@ async function runSearch(q, { push = true } = {}) {
   state.engineInfo = data.engines;
   state.busy = false;
   renderResults();
+  if (settings().shield) resolveDns(state.results);
+}
+
+/* Every result host is resolved by AdGuard DNS — the only resolver the app
+   talks to. AdGuard answers a domain on its list with 0.0.0.0 (or ::), so the
+   answer is the verdict even when CleanGEO's own list has no rule for it. */
+async function resolveDns(items) {
+  if (!items.length) return;
+  const hosts = [...new Set(items.map(r => siteKey(r.url)).filter(Boolean))];
+  const done = await Promise.all(hosts.map(async h => [h, await adguardLookup(h)]));
+  const byHost = new Map(done);
+  let changed = false;
+  for (const r of items) {
+    const dns = byHost.get(siteKey(r.url));
+    if (dns) { r.dns = dns; changed = true; }
+  }
+  if (changed && items === state.results) renderResults();
 }
 
 function siteKey(url) {
@@ -2047,7 +2515,7 @@ function renderResults() {
     return;
   }
 
-  const blockedCount = items.filter(r => shieldOn && list.check(r.url, { pageUrl: location.href }).blocked).length;
+  const blockedCount = items.filter(r => shieldOn && (list.check(r.url, { pageUrl: location.href }).blocked || (r.dns && r.dns.blocked))).length;
   const metas = el('div', { class: 'result-meta' },
     el('strong', {}, String(items.length)),
     ' შედეგი',
@@ -2093,7 +2561,8 @@ function favicon(host) {
 function renderResult(r, list, shieldOn) {
   const host = siteKey(r.url);
   const verdict = shieldOn && list ? list.check(r.url, { pageUrl: location.href }) : { blocked: false };
-  const blocked = verdict.blocked;
+  const dns = shieldOn && r.dns && r.dns.blocked ? r.dns : null;
+  const blocked = verdict.blocked || !!dns;
 
   const title = el('a', {
     class: 'res-title', href: r.url, rel: 'noopener noreferrer',
@@ -2110,8 +2579,10 @@ function renderResult(r, list, shieldOn) {
     el('div', { class: 'res-url' }, favicon(host), el('span', { class: 'res-host' }, r.shown || host)),
     r.snippet ? el('p', { class: 'res-snippet' }, r.snippet) : null,
     blocked ? el('div', { style: 'margin-top:8px' },
-      el('span', { class: 'badge', title: (verdict.rules || []).join('\n') },
-        '⛔ AdGuard წესი: ' + ((verdict.rules && verdict.rules[0]) || verdict.reason || 'დაბლოკვა'))) : null,
+      el('span', { class: 'badge', title: verdict.blocked ? (verdict.rules || []).join('\n') : 'AdGuard DNS: ' + ((dns && dns.ips) || []).join(', ') + '\n' + ADGUARD_DOH },
+        verdict.blocked
+          ? '⛔ AdGuard წესი: ' + ((verdict.rules && verdict.rules[0]) || verdict.reason || 'დაბლოკვა')
+          : '⛔ AdGuard DNS: დაბლოკილი დომენი')) : null,
     actions);
 
   const row = el('article', { class: 'res' + (blocked ? ' blocked' : '') }, body);
@@ -2250,9 +2721,11 @@ const RESOURCE_TYPES = {
 
 /* the page itself is on the list: say so instead of rendering it */
 function blockedPageCard(url, verdict) {
+  const viaDns = !(verdict.rules || []).length && /AdGuard DNS/i.test(verdict.reason || '');
   const kids = [
     el('div', { style: 'font-size:28px' }, '⛔'),
-    el('div', { style: 'margin-top:8px;font-weight:600' }, siteKey(url) + ' დაბლოკილია CleanGEO სიით'),
+    el('div', { style: 'margin-top:8px;font-weight:600' },
+      siteKey(url) + (viaDns ? ' დაბლოკილია AdGuard DNS-ით' : ' დაბლოკილია CleanGEO სიით')),
     el('div', { style: 'margin-top:6px;opacity:.8' }, (verdict.rules || []).join('\n') || verdict.reason || ''),
   ];
   if (!settings().strict) {
@@ -2407,6 +2880,17 @@ async function openReader(url) {
     body.classList.remove('has-frame');
     return;
   }
+  // and AdGuard DNS has the last word: a sinkholed domain is blocked even when
+  // CleanGEO's own list says nothing about it
+  if (settings().shield) {
+    const dns = await adguardLookup(siteKey(url));
+    if (token !== readerToken) return;
+    if (dns.blocked) {
+      body.replaceChildren(blockedPageCard(url, { blocked: true, rules: [], reason: 'AdGuard DNS: ' + (dns.ips || []).join(', ') }));
+      body.classList.remove('has-frame');
+      return;
+    }
+  }
 
   try {
     const page = await fetchReadable(url);
@@ -2556,10 +3040,11 @@ function aboutNodes() {
   return [
     p('ჩვეულებრივი საძიებო სისტემა შედეგზე დაჭერისთანავე ატვირთავს საიტის სკრიპტებს, ტრეკერებსა და რეკლამებს. CleanGEO ამას არ აკეთებს.'),
     el('h3', {}, '1. ძებნა'),
-    p('შედეგები მოდის DuckDuckGo-დან და Bing-იდან. ყოველი შედეგი მოწმდება თქვენივე ბლოკ-ლისტით — საშიში დომენი მონიშნულია.'),
+    p('ძებნა ერთდროულად რამდენიმე საძიებო სისტემაში მიდის და შედეგები ერთ სიად იკრიბება — სახელებს არ ვაჩვენებთ, მხოლოდ შედეგებს. Safe Search გამორთულია ყველგან. ყოველი შედეგი მოწმდება ბლოკ-ლისტით — საშიში დომენი მონიშნულია.'),
     el('h3', {}, '2. დაცული გახსნა'),
     p('საიტი იხსნება ტექსტურ რეჟიმში: მისი JavaScript, iframe-ები, ფორმები, ტრეკერ-პიქსელები და რეკლამები არ მუშაობს. სიის CSS წესები რეკლამის ბლოკებს მალავს.'),
     el('h3', {}, '3. ბლოკ-ლისტი'),
+    p('დომენი მოწმდება ორივეგან: CleanGEO-ს სია და AdGuard DNS (dns.adguard-dns.com) — სხვა DNS არ გამოიყენება. AdGuard DNS დაბლოკილ დომენზე პასუხობს 0.0.0.0-ით, ამიტომ დაცვა მოქმედებს მაშინაც, როცა სიაში ეს დომენი ჯერ არ არის.'),
     p('გადაწყვეტილებას იღებს მხოლოდ AdGuard სინტაქსი — ის წესები, რომლებსაც AdGuard Pro იღებს: ||host^, @@ გამონაკლისი, $important, $document, $domain=, ## / #?# / #$# / #%#. ისეთი ოფციები, რომლებიც გვერდს არ ბლოკავს ($media, $popup, $third-party, $removeparam, $app...), გვერდს არ ხურავს; ბრაუზერისთვის დამახასიათებელი დაბლოკვის სხვა მექანიზმი აქ არ არის.'),
     p('სია იტვირთება GitHub-იდან და ავტომატურად შემოწმდება თქვენ მიერ არჩეული სიხშირით. თუ სიაში წესები დაემატა — დაემატება თქვენთანაც; თუ წაიშალა — წაიშლება თქვენთანაც. ცვლილებები ჩანს პარამეტრებში.'),
     el('h3', {}, '4. მოწყობილობები'),

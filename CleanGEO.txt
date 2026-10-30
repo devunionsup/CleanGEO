@@ -282,9 +282,9 @@ gogatv.org###overlayAd
 
 adjaranet.ai##div.avc-asv
 ||adjaranet.ai/rolls/cat/*
-||adjaranet.ai/asvl/banner/vipcards/*
+||adjaranet.ai/*asvl/banner*$all
 adjaranet.ai##.ad-catfish
-||adjaranet.ai*asvl/banner/welcome/*$all
+||adjaranet.ai*asvl*$all
 
 
 

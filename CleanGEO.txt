@@ -119,11 +119,6 @@
 
 
 
-! srulad.com
-
-
-||app.adroll.live*mp4*$all
-||static-cdn.xyz*mp4*$all
 
 
 ! geosaitebi.online
@@ -243,10 +238,6 @@ combatfootages.com#$?#html { overflow: auto !important; }
 
 
 
-! srulad.com
-
-
-srulad.com##[data-ad-slot]
 
 
 

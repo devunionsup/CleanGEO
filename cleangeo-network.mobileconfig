@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>DNSSettings</key>
+			<dict>
+				<key>DNSProtocol</key>
+				<string>HTTPS</string>
+				<key>ServerURL</key>
+				<string>https://dns.adguard-dns.com/dns-query</string>
+			</dict>
+			<key>PayloadDescription</key>
+			<string>Every DNS query, IPv4 and IPv6, goes to https://dns.adguard-dns.com/dns-query over HTTPS. Cloudflare Security is used only when this provider fails a health check or exceeds the latency budget.</string>
+			<key>PayloadDisplayName</key>
+			<string>CleanGEO DNS — AdGuard</string>
+			<key>PayloadIdentifier</key>
+			<string>tv.cleangeo.network.dns</string>
+			<key>PayloadType</key>
+			<string>com.apple.dnsSettings.managed</string>
+			<key>PayloadUUID</key>
+			<string>0b9a7c31-2d54-4c8e-91f6-5a7e8c21d304</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>IKEv2</key>
+			<dict>
+				<key>DeadPeerDetectionRate</key>
+				<string>None</string>
+				<key>RemoteAddress</key>
+				<string></string>
+			</dict>
+			<key>PayloadDescription</key>
+			<string>Proxy container only — no VPN tunnel is configured in this profile.</string>
+			<key>PayloadDisplayName</key>
+			<string>CleanGEO tunnel and proxy layer</string>
+			<key>PayloadIdentifier</key>
+			<string>tv.cleangeo.network.vpn</string>
+			<key>PayloadType</key>
+			<string>com.apple.vpn.managed</string>
+			<key>PayloadUUID</key>
+			<string>c3d67f18-9e42-4a70-b5b1-84f0e29a6d52</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>Proxies</key>
+			<dict>
+				<key>HTTPEnable</key>
+				<integer>0</integer>
+				<key>HTTPSEnable</key>
+				<integer>0</integer>
+				<key>ProxyAutoConfigEnable</key>
+				<integer>1</integer>
+				<key>ProxyAutoConfigFallbackAllowed</key>
+				<integer>0</integer>
+				<key>ProxyAutoConfigURLString</key>
+				<string>https://devunionsup.github.io/CleanGEO/proxy.pac</string>
+				<key>ProxyAutoDiscoveryEnable</key>
+				<integer>0</integer>
+				<key>SOCKSEnable</key>
+				<integer>0</integer>
+			</dict>
+			<key>UserDefinedName</key>
+			<string>CleanGEO Secure Network</string>
+			<key>VPNType</key>
+			<string>IKEv2</string>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>PAC proxy https://devunionsup.github.io/CleanGEO/proxy.pac; DNS over HTTPS via AdGuard (fallback Cloudflare Security). Routing: browser → proxy → internet</string>
+	<key>PayloadDisplayName</key>
+	<string>CleanGEO Secure Network</string>
+	<key>PayloadIdentifier</key>
+	<string>tv.cleangeo.network</string>
+	<key>PayloadOrganization</key>
+	<string>CleanGEO</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>6f1c2a84-57d3-4b19-9c8c-2a0d3e41b7f0</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

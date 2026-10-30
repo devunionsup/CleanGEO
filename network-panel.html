@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CleanGEO · Secure Network</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#2b3440; --text:#e6edf3; --muted:#8b949e;
+          --ok:#3fb950; --warn:#d29922; --bad:#f85149; --accent:#4c9aff; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--text);
+         font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  h1 { font-size:20px; margin:0 0 2px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px;
+          padding:14px; margin-bottom:12px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:12px;
+         padding:7px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+  .row:last-child { border-bottom:0; }
+  .row label { color:var(--muted); font-size:13px; }
+  .val { font-variant-numeric:tabular-nums; text-align:right; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:20px; font-size:12px;
+          font-weight:600; border:1px solid transparent; }
+  .p-ok { color:var(--ok); border-color:rgba(63,185,80,.4); background:rgba(63,185,80,.1); }
+  .p-warn { color:var(--warn); border-color:rgba(210,153,34,.4); background:rgba(210,153,34,.1); }
+  .p-bad { color:var(--bad); border-color:rgba(248,81,73,.4); background:rgba(248,81,73,.1); }
+  .p-idle { color:var(--muted); border-color:var(--line); }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted);
+       margin:0 0 8px; }
+  input[type=text],input[type=number],select { background:#0b0f14; color:var(--text);
+    border:1px solid var(--line); border-radius:8px; padding:7px 9px; font:inherit;
+    width:100%; max-width:260px; }
+  input[type=checkbox] { width:20px; height:20px; accent-color:var(--accent); }
+  button { background:var(--accent); color:#fff; border:0; border-radius:9px;
+           padding:10px 14px; font:inherit; font-weight:600; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); }
+  .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .note { font-size:12px; color:var(--text); background:#10151c; border-left:3px solid var(--line);
+          padding:8px 10px; margin:8px 0 0; border-radius:0 8px 8px 0; overflow-wrap:anywhere; }
+  .err { border-left-color:var(--bad); }
+  .foot { color:#5c6672; font-size:11px; margin-top:14px; line-height:1.55; }
+  code { color:#9ecbff; }
+</style>
+</head>
+<body>
+<h1 id="title">CleanGEO Secure Network</h1>
+<div class="sub" id="sub">VPN · proxy · DNS in one profile</div>
+
+<div class="card">
+  <div class="row"><label>Overall</label><div class="val"><span class="pill p-idle" id="overall">—</span></div></div>
+  <div class="row"><label>Routing</label><div class="val" id="routing">—</div></div>
+  <div class="row"><label>VPN tunnel</label><div class="val"><span class="pill p-idle" id="vpn">—</span></div></div>
+  <div class="row"><label>VPN endpoint</label><div class="val" id="vpnEndpoint">—</div></div>
+  <div class="row"><label>Proxy</label><div class="val"><span class="pill p-idle" id="proxy">—</span></div></div>
+  <div class="row"><label>DNS provider</label><div class="val" id="dnsProvider">—</div></div>
+  <div class="row"><label>DNS health</label><div class="val"><span class="pill p-idle" id="dns">—</span></div></div>
+  <div class="row"><label>Latency</label><div class="val" id="latency">—</div></div>
+  <div class="row"><label>Verified</label><div class="val"><span class="pill p-idle" id="verified">—</span></div></div>
+  <div class="row"><label>Last error</label><div class="val" id="lastError">none</div></div>
+</div>
+
+<div class="card">
+  <h2>Leak protection</h2>
+  <div id="leaks"></div>
+</div>
+
+<div class="card">
+  <h2>Profile</h2>
+  <div class="row"><label>Master switch</label><input type="checkbox" id="master"></div>
+  <div class="row"><label>VPN</label><input type="checkbox" id="vpnEnabled"></div>
+  <div class="row"><label>VPN server</label><input type="text" id="vpnServer" placeholder="vpn.example.net"></div>
+  <div class="row"><label>VPN remote identity</label><input type="text" id="vpnRemoteId" placeholder="certificate identity"></div>
+  <div class="row"><label>Kill switch (on-demand)</label><input type="checkbox" id="onDemand"></div>
+  <div class="row"><label>Proxy</label><input type="checkbox" id="proxyEnabled"></div>
+  <div class="row"><label>Proxy type</label>
+    <select id="proxyType">
+      <option value="PAC">PAC (auto)</option><option value="HTTP">HTTP</option>
+      <option value="HTTPS">HTTPS</option><option value="SOCKS5">SOCKS5</option>
+    </select></div>
+  <div class="row"><label>PAC URL</label><input type="text" id="pacUrl"></div>
+  <div class="row"><label>PAC fallback to DIRECT</label><input type="checkbox" id="pacFallback"></div>
+  <div class="row"><label>Proxy host</label><input type="text" id="proxyHost" placeholder="proxy.example.net"></div>
+  <div class="row"><label>Proxy port</label><input type="number" id="proxyPort" min="1" max="65535"></div>
+  <div class="row"><label>Proxy placement</label>
+    <select id="placement">
+      <option value="vpn">inside the tunnel — browser → VPN → proxy</option>
+      <option value="global">outside the tunnel — browser → proxy → VPN</option>
+    </select></div>
+  <div class="row"><label>DNS over HTTPS</label><input type="checkbox" id="dnsEnabled"></div>
+  <div class="row"><label>Primary DNS</label><input type="text" id="dnsPrimary"></div>
+  <div class="row"><label>Fallback DNS</label><input type="text" id="dnsFallback"></div>
+  <div class="row"><label>DNS timeout (ms)</label><input type="number" id="dnsTimeout" min="100" max="10000"></div>
+  <div class="row"><label>Switch provider above (ms)</label><input type="number" id="dnsLatency" min="50" max="10000"></div>
+  <div class="row"><label>IPv6</label>
+    <select id="ipv6"><option value="prefer">prefer</option>
+      <option value="strict">strict</option><option value="disable">disable</option></select></div>
+  <div class="actions">
+    <button id="save">Save profile file</button>
+    <button class="ghost" id="download">Download installable profile</button>
+  </div>
+  <div id="saveMsg"></div>
+</div>
+
+<div class="card">
+  <h2>Limits, stated plainly</h2>
+  <div id="limits"></div>
+</div>
+
+<div class="foot" id="foot"></div>
+
+<script>
+const PROFILE = {"version": 1, "name": "CleanGEO Secure Network", "organization": "CleanGEO", "enabled": true, "vpn": {"enabled": false, "remoteAddress": "", "remoteIdentifier": "", "localIdentifier": "cleangeo", "authMethod": "UserNamePassword", "username": "", "serverCertificateCommonName": "", "overridePrimary": true, "onDemand": true}, "proxy": {"enabled": true, "placement": "vpn", "type": "PAC", "pacUrl": "https://devunionsup.github.io/CleanGEO/proxy.pac", "pacFallbackAllowed": false, "captiveLoginAllowed": true, "host": "", "port": 0, "scheme": "HTTPS", "username": ""}, "dns": {"enabled": true, "primary": {"name": "AdGuard", "url": "https://dns.adguard-dns.com/dns-query", "probe": "https://dns.adguard-dns.com/resolve"}, "fallback": {"name": "Cloudflare Security", "url": "https://security.cloudflare-dns.com/dns-query", "probe": "https://security.cloudflare-dns.com/dns-query"}, "timeoutMs": 2000, "maxLatencyMs": 800, "maxRetries": 1}, "routing": {"order": ["proxy", "vpn", "internet"]}, "ipv6": {"mode": "prefer", "blockWhenUnproxied": false}, "recovery": {"maxAttempts": 3}};
+const STATUS = {"overall": "ok", "enabled": true, "verified": true, "routing": "browser → proxy → internet", "vpn": {"status": "off", "state": "off", "endpoint": null, "source": "VPN disabled in the profile"}, "proxy": {"status": "ok", "error": "", "latencyMs": 3, "type": "PAC"}, "dns": {"provider": "AdGuard", "fallbackUsed": false, "latencyMs": 0, "status": "ok", "error": ""}, "leaks": {"dns": {"protected": true, "resolverProbed": "AdGuard", "note": "The DNS payload sends every resolver query, IPv4 and IPv6, to the configured DoH provider once it is installed."}, "webrtc": {"protected": false, "note": "WebRTC/STUN can reveal local and public IPs, and no supported configuration payload turns it off — it is a per-browser policy. This is reported as unprotected on purpose."}, "ipv6": {"protected": false, "mode": "prefer", "note": "IPv6 is resolved by the same payload as IPv4. With 'strict' an IPv6-only path cannot leave unproxied."}, "killswitch": {"available": false, "note": "No VPN is configured, so there is nothing to switch off and no kill switch to offer. Traffic protection here is the proxy plus DNS."}}, "lastError": null, "conflicts": ["IPv6: 'prefer' keeps IPv6 reachable. If the proxy does not carry IPv6, IPv6 traffic can bypass it — use 'strict' to prevent that.", "VPN: no tunnel is configured, so this is a proxy + DNS setup. Nothing here is reported as a VPN connection."], "blocking": []};
+const DIAG = {"profile": {"name": "CleanGEO Secure Network", "enabled": true, "version": 1}, "vpn": {"enabled": false, "endpoint": null, "authMethod": "UserNamePassword", "onDemand": true}, "proxy": {"enabled": true, "type": "PAC", "placement": "vpn", "server": null, "pac": "https://devunionsup.github.io/CleanGEO/proxy.pac"}, "dns": {"enabled": true, "primary": "AdGuard", "fallback": "Cloudflare Security", "state": {"provider": "AdGuard", "fallbackUsed": false, "latencyMs": 0, "status": "ok", "error": ""}}, "routing": "browser → proxy → internet", "ipv6": "prefer", "errors": []};
+const CONFLICTS = ["IPv6: 'prefer' keeps IPv6 reachable. If the proxy does not carry IPv6, IPv6 traffic can bypass it — use 'strict' to prevent that.", "VPN: no tunnel is configured, so this is a proxy + DNS setup. Nothing here is reported as a VPN connection."];
+
+const PILL = { ok:'p-ok', active:'p-ok', fallback:'p-warn', degraded:'p-bad', failed:'p-bad',
+               down:'p-bad', inactive:'p-warn', disabled:'p-idle', off:'p-idle',
+               not_configured:'p-idle', unchecked:'p-idle' };
+const pillClass = (s) => PILL[s] || 'p-idle';
+const dash = (v) => (v === null || v === undefined || v === '') ? '—' : String(v);
+const esc = (s) => String(s).replace(/[&<>"]/g,
+  (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function setPill(id, text, state) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'pill ' + pillClass(state);
+}
+
+function fillForm(p) {
+  const g = (id) => document.getElementById(id);
+  g('master').checked = !!p.enabled;
+  g('vpnEnabled').checked = !!p.vpn.enabled;
+  g('vpnServer').value = p.vpn.remoteAddress || '';
+  g('vpnRemoteId').value = p.vpn.remoteIdentifier || '';
+  g('onDemand').checked = !!p.vpn.onDemand;
+  g('proxyEnabled').checked = !!p.proxy.enabled;
+  g('proxyType').value = (p.proxy.type || 'PAC').toUpperCase();
+  g('pacUrl').value = p.proxy.pacUrl || '';
+  g('pacFallback').checked = !!p.proxy.pacFallbackAllowed;
+  g('proxyHost').value = p.proxy.host || '';
+  g('proxyPort').value = p.proxy.port || '';
+  g('placement').value = p.proxy.placement || 'vpn';
+  g('dnsEnabled').checked = !!p.dns.enabled;
+  g('dnsPrimary').value = p.dns.primary.url || '';
+  g('dnsFallback').value = p.dns.fallback.url || '';
+  g('dnsTimeout').value = p.dns.timeoutMs;
+  g('dnsLatency').value = p.dns.maxLatencyMs;
+  g('ipv6').value = p.ipv6.mode;
+}
+
+function readForm() {
+  const g = (id) => document.getElementById(id);
+  const type = g('proxyType').value;
+  return {
+    ...PROFILE,
+    enabled: g('master').checked,
+    vpn: { ...PROFILE.vpn, enabled: g('vpnEnabled').checked,
+           remoteAddress: g('vpnServer').value.trim(),
+           remoteIdentifier: g('vpnRemoteId').value.trim(),
+           onDemand: g('onDemand').checked },
+    proxy: { ...PROFILE.proxy, enabled: g('proxyEnabled').checked, type,
+             scheme: type === 'SOCKS5' ? 'SOCKS5' : type,
+             pacUrl: g('pacUrl').value.trim(),
+             pacFallbackAllowed: g('pacFallback').checked,
+             host: g('proxyHost').value.trim(),
+             port: Number(g('proxyPort').value || 0),
+             placement: g('placement').value },
+    dns: { ...PROFILE.dns, enabled: g('dnsEnabled').checked,
+           primary: { ...PROFILE.dns.primary, url: g('dnsPrimary').value.trim() },
+           fallback: { ...PROFILE.dns.fallback, url: g('dnsFallback').value.trim() },
+           timeoutMs: Number(g('dnsTimeout').value || 0),
+           maxLatencyMs: Number(g('dnsLatency').value || 0) },
+    ipv6: { ...PROFILE.ipv6, mode: g('ipv6').value },
+  };
+}
+
+// Mirrors netcontroller.validate_profile. The controller stays the authority;
+// this only stops an obviously bad edit before it is written anywhere.
+function validate(p) {
+  const e = [];
+  if (p.vpn.enabled) {
+    if (!p.vpn.remoteAddress) e.push('VPN is on but no server is set.');
+    if (!p.vpn.remoteIdentifier) e.push('VPN needs a remote identity matching the server certificate.');
+  }
+  if (p.proxy.enabled) {
+    if (p.proxy.type === 'PAC') {
+      if (!/^https:\/\//i.test(p.proxy.pacUrl)) e.push('PAC URL must start with https://');
+    } else {
+      if (!p.proxy.host) e.push('Proxy host is required for ' + p.proxy.type + '.');
+      if (!(p.proxy.port >= 1 && p.proxy.port <= 65535)) e.push('Proxy port must be 1-65535.');
+    }
+  }
+  if (p.dns.enabled) {
+    ['primary', 'fallback'].forEach((role) => {
+      if (!/^https:\/\//i.test(p.dns[role].url)) e.push(role + ' DNS provider must be an https:// URL.');
+    });
+    if (p.dns.primary.url === p.dns.fallback.url) e.push('Fallback provider must differ from the primary.');
+    if (!(p.dns.timeoutMs >= 100 && p.dns.timeoutMs <= 10000)) e.push('DNS timeout must be 100-10000 ms.');
+    if (!(p.dns.maxLatencyMs >= 50 && p.dns.maxLatencyMs <= 10000)) e.push('Latency budget must be 50-10000 ms.');
+  }
+  return e;
+}
+
+function renderStatus(s) {
+  setPill('overall', s.overall, s.overall);
+  document.getElementById('routing').textContent = s.routing;
+  setPill('vpn', s.vpn.status, s.vpn.status);
+  document.getElementById('vpnEndpoint').textContent = dash(s.vpn.endpoint);
+  setPill('proxy', s.proxy.status, s.proxy.status);
+  document.getElementById('dnsProvider').textContent = s.dns.provider
+    ? s.dns.provider + (s.dns.fallbackUsed ? ' (fallback)' : '') : 'none';
+  setPill('dns', s.dns.status, s.dns.status);
+  document.getElementById('latency').textContent =
+    (s.dns.latencyMs === null || s.dns.latencyMs === undefined) ? '—' : s.dns.latencyMs + ' ms';
+  setPill('verified', s.verified ? 'yes' : 'no', s.verified ? 'ok' : 'inactive');
+  document.getElementById('lastError').textContent =
+    s.lastError ? s.lastError.component + ': ' + s.lastError.error : 'none';
+}
+
+function renderKeyed(hostId, entries, onValue, onText) {
+  const host = document.getElementById(hostId);
+  host.innerHTML = '';
+  entries.forEach(([name, v]) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const label = document.createElement('label');
+    label.textContent = name;
+    const right = document.createElement('div');
+    right.className = 'val';
+    const pill = document.createElement('span');
+    const on = onValue(v);
+    pill.className = 'pill ' + (on ? 'p-ok' : 'p-warn');
+    pill.textContent = onText(on);
+    right.appendChild(pill);
+    row.append(label, right);
+    host.appendChild(row);
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = v.note;
+    host.appendChild(note);
+  });
+}
+
+function renderLeaks(leaks) {
+  renderKeyed('leaks',
+    Object.entries(leaks).map(([k, v]) => [k === 'killswitch' ? 'kill switch' : k, v]),
+    (v) => (v.protected !== undefined ? v.protected : v.available),
+    (on) => (on ? 'protected' : 'not protected'));
+}
+
+function renderLimits() {
+  const host = document.getElementById('limits');
+  host.innerHTML = '';
+  CONFLICTS.forEach((c) => {
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = c;
+    host.appendChild(note);
+  });
+  if (!CONFLICTS.length) {
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.textContent = 'No conflicts in the current profile.';
+    host.appendChild(note);
+  }
+}
+
+document.getElementById('save').onclick = () => {
+  const p = readForm();
+  const errors = validate(p);
+  const box = document.getElementById('saveMsg');
+  if (errors.length) {
+    box.innerHTML = '<div class="note err">' + errors.map(esc).join('<br>') + '</div>';
+    return;
+  }
+  const blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'netprofile.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  box.innerHTML = '<div class="note">Saved as <code>netprofile.json</code>. Apply it with ' +
+    '<code>python build_network_panel.py --apply netprofile.json</code>, which stores it ' +
+    'and re-renders this panel with the new state.</div>';
+};
+
+document.getElementById('download').onclick = () => {
+  const errors = validate(readForm());
+  if (errors.length) {
+    document.getElementById('saveMsg').innerHTML =
+      '<div class="note err">' + errors.map(esc).join('<br>') + '</div>';
+    return;
+  }
+  location.href = 'cleangeo-network.mobileconfig';
+};
+
+document.getElementById('title').textContent = PROFILE.name;
+document.getElementById('sub').textContent =
+  'VPN · proxy · DNS in one profile — ' + CONFLICTS.length + ' note(s)';
+document.getElementById('foot').textContent = 'profile v' + PROFILE.version +
+  ' · ' + DIAG.routing + ' · resolver: ' +
+  (DIAG.dns.state.provider || 'none') ;
+fillForm(PROFILE);
+renderStatus(STATUS);
+renderLeaks(STATUS.leaks);
+renderLimits();
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "name": "CleanGEO Secure Network",
+  "organization": "CleanGEO",
+  "enabled": true,
+  "vpn": {
+    "enabled": false,
+    "remoteAddress": "",
+    "remoteIdentifier": "",
+    "localIdentifier": "cleangeo",
+    "authMethod": "UserNamePassword",
+    "username": "",
+    "serverCertificateCommonName": "",
+    "overridePrimary": true,
+    "onDemand": true
+  },
+  "proxy": {
+    "enabled": true,
+    "placement": "vpn",
+    "type": "PAC",
+    "pacUrl": "https://devunionsup.github.io/CleanGEO/proxy.pac",
+    "pacFallbackAllowed": false,
+    "captiveLoginAllowed": true,
+    "host": "",
+    "port": 0,
+    "scheme": "HTTPS",
+    "username": ""
+  },
+  "dns": {
+    "enabled": true,
+    "primary": {
+      "name": "AdGuard",
+      "url": "https://dns.adguard-dns.com/dns-query",
+      "probe": "https://dns.adguard-dns.com/resolve"
+    },
+    "fallback": {
+      "name": "Cloudflare Security",
+      "url": "https://security.cloudflare-dns.com/dns-query",
+      "probe": "https://security.cloudflare-dns.com/dns-query"
+    },
+    "timeoutMs": 2000,
+    "maxLatencyMs": 800,
+    "maxRetries": 1
+  },
+  "routing": {
+    "order": ["proxy", "vpn", "internet"]
+  },
+  "ipv6": {
+    "mode": "prefer",
+    "blockWhenUnproxied": false
+  },
+  "recovery": {
+    "maxAttempts": 3
+  }
+}

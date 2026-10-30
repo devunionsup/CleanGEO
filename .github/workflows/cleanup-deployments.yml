@@ -26,6 +26,7 @@ jobs:
             ids=$(gh api "/repos/$REPO/deployments?per_page=100&page=$page" --jq '.[].id' || true)
             [ -z "$ids" ] && break
             for d in $ids; do
+              gh api -X POST "/repos/$REPO/deployments/$d/statuses" -f state=inactive >/dev/null 2>&1 || true
               if out=$(gh api -X DELETE "/repos/$REPO/deployments/$d" 2>&1); then
                 ok=$((ok+1)); echo "deleted $d"; echo "| $d | deleted |" >> "$GITHUB_STEP_SUMMARY"
               else

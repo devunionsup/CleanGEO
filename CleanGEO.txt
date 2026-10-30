@@ -35,8 +35,6 @@
 ||*r.botsford.link*$all
 ||ad.twinrdengine.com*$all
 ||tbcpayj-ge*cfd*ge*$all
-||a.nel.cloudflare.com*$all
-||static.cloudflareinsights.com*$all
 ||yandex.ru*ads*adfox*$all
 ||*vnmfvnkd.win*$all
 ||*s.opoxv.com*$all

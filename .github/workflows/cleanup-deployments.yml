@@ -4,6 +4,7 @@ on:
 
 permissions:
   contents: read
+  deployments: write
   actions: write
 
 jobs:
@@ -19,6 +20,4 @@ jobs:
           for d in $(gh api "/repos/$REPO/deployments?per_page=100" --jq '.[].id' || true); do
             gh api -X DELETE "/repos/$REPO/deployments/$d" >/dev/null 2>&1 && echo "deleted deployment $d" || echo "skip deployment $d"
           done
-          echo "remaining:"
-          gh api "/repos/$REPO/deployments?per_page=1" --jq 'length' || true
-          echo done
+          echo "done"

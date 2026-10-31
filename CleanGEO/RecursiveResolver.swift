@@ -145,7 +145,6 @@ public final class RecursiveResolver {
         }
 
         // Ask these servers for the qname, following referrals.
-        var currentZone = zone
         var currentNS = nameservers
 
         for _ in 0..<maxHops {

@@ -378,7 +378,7 @@ public struct DSData {
         wire.append(key.algorithm)
         wire.append(contentsOf: key.publicKey)
         switch type {
-        case 1:  return Data(SHA1.hash(data: wire))
+        case 1:  return Data(Insecure.SHA1.hash(data: wire))
         case 2:  return Data(SHA256.hash(data: wire))
         case 4:  return Data(SHA384.hash(data: wire))
         default: return nil

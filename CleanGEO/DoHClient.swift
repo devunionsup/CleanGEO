@@ -8,6 +8,7 @@
 
 import Foundation
 import Network
+import Security
 
 public enum DoHError: Error, LocalizedError {
     case badURL

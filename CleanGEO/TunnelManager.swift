@@ -15,7 +15,7 @@ import NetworkExtension
 public final class TunnelManager: ObservableObject {
 
     public static let shared = TunnelManager()
-    static let tunnelBundleID = "ge.cleangeo.app.tunnel"
+    static let tunnelBundleID = "app.beet2811.ursamajor1675.tunnel"
 
     @Published public private(set) var status: NEVPNStatus = .invalid
     @Published public private(set) var lastError: String?

@@ -121,10 +121,10 @@ public final class FilterListManager {
     }
 
     /// Shared with the Safari extension via an App Group.
-    public static let appGroupID = "group.ge.cleangeo.shared"
+    public static let appGroupID = "group.87486bbbb00f533a.3"
     public static let blockerRulesFileName = "cleangeo-blocker.json"
     /// The content blocker identifier registered with Safari.
-    public static let blockerID = "ge.cleangeo.app.BlockerExtension"
+    public static let blockerID = "app.beet2811.ursamajor1675.BlockerExtension"
 
     public private(set) var sources: [FilterListSource] = FilterListManager.defaultSources
     public private(set) var stats = FilterStats()

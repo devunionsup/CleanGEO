@@ -33,7 +33,7 @@ final class BlockerRequestHandler: NSObject, NSExtensionRequestHandling {
     static func loadRules() -> [DecodedRule] {
         let fm = FileManager.default
         let urls: [URL?] = [
-            fm.containerURL(forSecurityApplicationGroupIdentifier: "group.ge.cleangeo.shared")?
+            fm.containerURL(forSecurityApplicationGroupIdentifier: "group.87486bbbb00f533a.3")?
                 .appendingPathComponent("Filters", isDirectory: true)
                 .appendingPathComponent(rulesFileName),
             // Fallback for development without the App Group entitlement.

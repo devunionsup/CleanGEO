@@ -143,8 +143,9 @@
 
 ||*hdd*mykadri.com$all
 ||*statline.cc*$all
-||vidium.nshamanauri.ge*mp4*$all
+||*vidium.nshamanauri.ge*$all
 ||img.mykadri.click*asvla2*$all
+||*vidium.shamanauri.ge*$all
 
 
 

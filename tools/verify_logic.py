@@ -21,8 +21,12 @@ KNOWN_HARMLESS = {"important","match-case","background","document","inline-font"
 def regex_escape(s: str) -> str:
     out = []
     for ch in s:
-        if ch in ".?*+()[]{}|^$\\":
+        if ch in ".?+()[]{}|$\\":
             out.append("\\" + ch)
+        elif ch == "*":
+            out.append(".*")
+        elif ch == "^":
+            out.append("[/:?&=]")
         else:
             out.append(ch)
     return "".join(out)
@@ -44,7 +48,9 @@ def compile_network_rule(raw: str):
         line = line[2:]; prefix = "^[a-z-]+://([a-z0-9-]+\\.)*"
     elif line.startswith("|"):
         line = line[1:]; prefix = "^"
-    if line.endswith("|"):
+    if line.endswith("^|"):
+        line = line[:-2]; suffix = "([/:?#]|$)"
+    elif line.endswith("|"):
         line = line[:-1]; suffix = "$"
     elif line.endswith("^"):
         line = line[:-1]; suffix = "([/:?#]|$)"
@@ -54,7 +60,7 @@ def compile_network_rule(raw: str):
     for m in modifiers:
         if m == "script": resource_types = ["script"]
         elif m == "image": resource_types = ["image"]
-        elif m == "stylesheet": resource_types = ["stylesheet"]
+        elif m == "stylesheet": resource_types = ["style-sheet"]
         elif m in ("xmlhttprequest","xhr","fetch"): resource_types = ["raw"]
         elif m in ("subdocument","frame","iframe"): resource_types = ["document"]
         elif m == "third-party": third = True

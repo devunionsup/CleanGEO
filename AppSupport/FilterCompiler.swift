@@ -239,7 +239,11 @@ public final class FilterCompiler {
             prefix = "^"
         }
 
-        if line.hasSuffix("|") {
+        if line.hasSuffix("^|") {
+            // "end of hostname" anchor: same practical meaning as ^ here.
+            line = String(line.dropLast(2))
+            suffix = "([/:?#]|$)"
+        } else if line.hasSuffix("|") {
             line = String(line.dropLast(1))
             suffix = "$"
         } else if line.hasSuffix("^") {
@@ -261,7 +265,7 @@ public final class FilterCompiler {
             switch m {
             case "script":          resourceTypes = append(resourceTypes, "script")
             case "image":           resourceTypes = append(resourceTypes, "image")
-            case "stylesheet":      resourceTypes = append(resourceTypes, "stylesheet")
+            case "stylesheet":      resourceTypes = append(resourceTypes, "style-sheet")
             case "xmlhttprequest", "xhr", "fetch": resourceTypes = append(resourceTypes, "raw")
             case "subdocument", "frame", "iframe": resourceTypes = append(resourceTypes, "document")
             case "font":            resourceTypes = append(resourceTypes, "font")
@@ -314,13 +318,20 @@ public final class FilterCompiler {
     }
 
     /// Characters that need escaping inside a Safari url-filter regex.
+    /// AdGuard wildcards translate as: `*` -> `.*`; a separator anchor `^`
+    /// inside the pattern becomes a separator character class.
     static func regexEscape(_ s: String) -> String {
         var out = ""
         for ch in s {
             switch ch {
-            case ".", "?", "*", "+", "(", ")", "[", "]", "{", "}", "|", "^", "$", "\\": out.append("\\").append(ch)
-            case "*": out.append(".*")
-            default: out.append(ch)
+            case ".", "?", "+", "(", ")", "[", "]", "{", "}", "|", "$", "\\":
+                out.append("\\").append(ch)
+            case "*":
+                out.append(".*")
+            case "^":
+                out.append("[/:?&=]")
+            default:
+                out.append(ch)
             }
         }
         return out

@@ -656,7 +656,7 @@ public struct CGBarsChart: View {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .fill(barFill(i))
                         .frame(maxHeight: .infinity)
-                        .scale(y: appeared ? values[i] / maxV : 0.001, anchor: .bottom)
+                        .scaleEffect(y: appeared ? values[i] / maxV : 0.001, anchor: .bottom)
                     Text(labels[i])
                         .font(.system(size: 10.5))
                         .foregroundColor(p.text2)

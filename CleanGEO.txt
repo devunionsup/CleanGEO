@@ -196,7 +196,6 @@
 ! kinolab.cc
 
 
-||ftp.kinolab.cc/ads/$media,video
 ||ftp.kinolab.cc/ads/*mp4*$all
 
 

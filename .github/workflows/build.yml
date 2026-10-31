@@ -63,7 +63,7 @@ jobs:
           set -o pipefail
           if [ -n "$P12_CERT_B64" ]; then
             echo "Building SIGNED with user certificate"
-            xcodebuild archive \
+            if xcodebuild archive \
               -project CleanGEO.xcodeproj \
               -scheme CleanGEO \
               -destination 'generic/platform=iOS' \
@@ -71,7 +71,21 @@ jobs:
               DEVELOPMENT_TEAM=S456H8HVXD \
               CODE_SIGN_STYLE=Manual \
               CODE_SIGN_IDENTITY="iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
-              PROVISIONING_PROFILE_SPECIFIER="00008101-001D68192E61001ERWL6R9" | xcbeautify
+              PROVISIONING_PROFILE_SPECIFIER="00008101-001D68192E61001ERWL6R9" | xcbeautify; then
+              echo signed > build/signed.flag
+            else
+              echo "Signed build failed (profile does not cover the extension bundle ID). Falling back to unsigned."
+              rm -rf build/CleanGEO.xcarchive
+              xcodebuild archive \
+                -project CleanGEO.xcodeproj \
+                -scheme CleanGEO \
+                -destination 'generic/platform=iOS' \
+                -archivePath build/CleanGEO.xcarchive \
+                CODE_SIGNING_ALLOWED=NO \
+                CODE_SIGNING_REQUIRED=NO \
+                CODE_SIGN_IDENTITY="" \
+                AD_HOC_CODE_SIGNING_ALLOWED=YES | xcbeautify
+            fi
           else
             echo "Building UNSIGNED (no P12_CERT_B64 secret)"
             xcodebuild archive \
@@ -90,9 +104,14 @@ jobs:
           mkdir -p build/Payload
           cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload/
           cd build
-          zip -qry CleanGEO-unsigned.ipa Payload
+          if [ -f signed.flag ]; then
+            zip -qry CleanGEO-signed.ipa Payload
+            cp CleanGEO-signed.ipa CleanGEO-unsigned.ipa
+          else
+            zip -qry CleanGEO-unsigned.ipa Payload
+          fi
           rm -rf Payload
-          ls -la CleanGEO-unsigned.ipa
+          ls -la *.ipa
 
       - name: Verify signing (informational)
         run: |

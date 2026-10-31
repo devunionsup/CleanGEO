@@ -179,31 +179,32 @@ public struct CGIcon: View {
 
 // MARK: - მწკრივი (.row) + გამყოფი
 
-public struct CGRow<Trailing: View>: View {
+public struct CGRow: View {
     let icon: String
-    let iconStyle: CGIconStyle
+    var iconStyle: CGIconStyle
     let title: String
     var subtitle: String?
-    @ViewBuilder let trailing: Trailing
     var showsSeparator: Bool
+    private let trailing: AnyView
     var action: (() -> Void)?
 
     @Environment(\.colorScheme) private var scheme
 
+    /// მწკრივი: trailing closure არის toggle/ტექსტი, ან CGChevron() ნავიგაციური მწკრივისთვის.
     public init(icon: String,
                 iconStyle: CGIconStyle = .accent,
                 title: String,
                 subtitle: String? = nil,
                 showsSeparator: Bool = true,
-                action: (() -> Void)? = nil,
-                @ViewBuilder trailing: () -> Trailing) {
+                @ViewBuilder trailing: () -> some View,
+                action: (() -> Void)? = nil) {
         self.icon = icon
         self.iconStyle = iconStyle
         self.title = title
         self.subtitle = subtitle
         self.showsSeparator = showsSeparator
+        self.trailing = AnyView(trailing())
         self.action = action
-        self.trailing = trailing()
     }
 
     public var body: some View {
@@ -242,22 +243,6 @@ public struct CGRow<Trailing: View>: View {
                     .padding(.leading, 62)
                     .padding(.trailing, 16)
             }
-        }
-    }
-}
-
-public extension CGRow where Trailing == CGChevron {
-    /// ნავიგაციური მწკრივი chevron-ით.
-    init(icon: String,
-         iconStyle: CGIconStyle = .accent,
-         title: String,
-         subtitle: String? = nil,
-         value: String? = nil,
-         showsSeparator: Bool = true,
-         action: (() -> Void)? = nil) {
-        self.init(icon: icon, iconStyle: iconStyle, title: title,
-                  subtitle: subtitle, showsSeparator: showsSeparator, action: action) {
-            CGChevron(value: value)
         }
     }
 }
@@ -411,7 +396,7 @@ public struct CGButton: View {
                 if loading {
                     ProgressView().tint(style == .primary ? .white : fg(p))
                 } else if let systemImage {
-                    Image(systemName: systemName).font(.system(size: 14, weight: .bold))
+                    Image(systemName: systemImage).font(.system(size: 14, weight: .bold))
                 }
                 Text(title).font(.system(size: 15, weight: .bold))
             }
@@ -818,9 +803,18 @@ public struct CGNavBar: View {
     }
 
     public var body: some View {
+        HStack(spacing: 10) { navContent }
+            .padding(.horizontal, 22)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
+            .background(navGradient)
+    }
+
+    @ViewBuilder
+    private var navContent: some View {
         let p = CGPalette.scheme(scheme)
-        HStack(spacing: 10) {
-            if compact, let onBack {
+        if compact {
+            if let onBack {
                 Button(action: onBack) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 15, weight: .bold))
@@ -830,25 +824,30 @@ public struct CGNavBar: View {
                         .overlay(Circle().stroke(p.cardBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-                Spacer()
             }
+            Spacer()
             Text(title)
-                .font(.system(size: compact ? 19 : 34, weight: .heavy))
-                .tracking(compact ? 0 : -1)
+                .font(.system(size: 19, weight: .heavy))
                 .foregroundColor(p.text)
-                .frame(maxWidth: compact ? .infinity : .infinity, alignment: compact ? .center : .leading)
-            if compact { Spacer(); Color.clear.frame(width: 40) }
+            Spacer()
+            Color.clear.frame(width: 40)
+        } else {
+            Text(title)
+                .font(.system(size: 34, weight: .heavy))
+                .tracking(-1)
+                .foregroundColor(p.text)
+            Spacer()
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 16)
-        .padding(.bottom, 10)
-        .background(
-            LinearGradient(stops: [
-                .init(color: p.bg, location: 0),
-                .init(color: p.bg.opacity(0.55), location: 0.55),
-                .init(color: .clear, location: 1)
-            ], startPoint: .top, endPoint: .bottom)
-            .ignoresSafeArea(edges: .top))
+    }
+
+    private var navGradient: some View {
+        let p = CGPalette.scheme(scheme)
+        return LinearGradient(stops: [
+            .init(color: p.bg, location: 0),
+            .init(color: p.bg.opacity(0.55), location: 0.55),
+            .init(color: .clear, location: 1)
+        ], startPoint: .top, endPoint: .bottom)
+        .ignoresSafeArea(edges: .top)
     }
 }
 

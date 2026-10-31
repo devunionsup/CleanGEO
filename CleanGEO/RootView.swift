@@ -216,13 +216,17 @@ struct HomeScreen: View {
                       subtitle: filterSubtitle,
                       showsSeparator: false) {
                     CGChevron()
-                } action: { ui.stack.append("filt") }
+                } action: {
+                    ui.stack.append("filt")
+                }
                 CGRow(icon: "globe",
                       title: "DNS დაცვა",
                       subtitle: "CleanGEO DNS · საკუთარი რეზოლვერი",
-                      value: "DNSSEC") {
-                    CGChevron()
-                } action: { ui.stack.append("dns") }
+                      showsSeparator: false) {
+                    CGChevron(value: "DNSSEC")
+                } action: {
+                    ui.stack.append("dns")
+                }
             }
             .cgCard()
         }
@@ -248,7 +252,7 @@ struct HomeScreen: View {
         if appState.tunnel.status == .connected { on += 1 }
         if appState.filters.stats.ruleCount > 0 { on += 1 }
         if safariEnabled { on += 1 }
-        if appState.isp.dnsHijackDetected || appState.isp.ipBlockDetected { on += 1 }
+        if appState.isp.dnsHijackDetected || appState.isp.tunnelRequired { on += 1 }
         if appState.filters.stats.lastError == nil { on += 1 }
         return Int((on / total * 100).rounded())
     }
@@ -515,9 +519,8 @@ struct ProtectionScreen: View {
             VStack(spacing: 0) {
                 CGRow(icon: "safari", title: "Safari გაფართოება",
                       subtitle: "დამატებითი დაცვა ბრაუზერში",
-                      showsSeparator: false,
-                      value: safariOn ? "ჩართულია" : "გამორთულია") {
-                    CGChevron()
+                      showsSeparator: false) {
+                    CGChevron(value: safariOn ? "ჩართულია" : "გამორთულია")
                 } action: { ui.stack.append("saf") }
                 CGRow(icon: "network", title: "DNS პარამეტრები",
                       subtitle: "სერვერი და დაცული კავშირი") {
@@ -659,7 +662,6 @@ struct DNSScreen: View {
     @State private var testing = false
 
     var body: some View {
-        let p = CGPalette.scheme(scheme)
         VStack(spacing: 0) {
             HStack(spacing: 13) {
                 CGIcon(appState.tunnel.status == .connected ? "checkmark" : "network",
@@ -723,7 +725,11 @@ struct DNSScreen: View {
                     testing = true
                     Task {
                         do {
-                            queryResult = try await ResolverFacade.shared.resolve(host: queryHost)
+                            let resolver = RecursiveResolver()
+                            let result = try await resolver.resolve(queryHost)
+                            queryResult = result.addresses.isEmpty
+                                ? "პასუხი ცარიელია"
+                                : "IP მისამართები: " + result.addresses.joined(separator: ", ")
                         } catch {
                             queryResult = "შეცდომა: \(error.localizedDescription)"
                         }
@@ -879,10 +885,12 @@ struct MoreScreen: View {
                 CGRow(icon: "clock", title: "დაბლოკვის ისტორია",
                       subtitle: "სატესტო მონაცემები",
                       showsSeparator: false) { CGChevron() }
-                CGRow(icon: "safari", title: "Safari გაფართოება") {
+                CGRow(icon: "safari", title: "Safari გაფართოება",
+                      showsSeparator: false) {
                     CGChevron()
                 } action: { ui.stack.append("saf") }
-                CGRow(icon: "globe", title: "DNS პარამეტრები") {
+                CGRow(icon: "globe", title: "DNS პარამეტრები",
+                      showsSeparator: false) {
                     CGChevron()
                 } action: { ui.stack.append("dns") }
                 CGRow(icon: "lock", title: "კონფიდენციალურობა",

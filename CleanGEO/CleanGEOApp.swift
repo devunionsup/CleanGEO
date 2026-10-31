@@ -12,6 +12,7 @@ import BackgroundTasks
 @main
 struct CleanGEOApp: App {
     @StateObject private var appState = AppState()
+    @StateObject private var uiState = UIState()
 
     init() {
         // Georgian is the app's primary and only user-facing language.
@@ -25,6 +26,7 @@ struct CleanGEOApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(appState)
+                .environmentObject(uiState)
                 .environment(\.locale, .init(identifier: "ka"))
                 .tint(Theme.accent)
         }

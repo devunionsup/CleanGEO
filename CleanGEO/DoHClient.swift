@@ -123,17 +123,15 @@ public final class DoHClient {
         framed.append(payload)
 
         return try await withCheckedThrowingContinuation { cont in
-            let params = NWParameters.tls
-            if let tls = params.defaultProtocolStack.applicationProtocol as? NWProtocolTLS {
-                // Strict SNI + modern TLS.
-                let options = sec_protocol_options_create_default().takeRetainedValue()
-                sec_protocol_options_set_tls_version_min(options, .TLSv13)
-                sec_protocol_options_set_tls_server_name(options, host)
-                params.defaultProtocolStack.applicationProtocol = NWProtocolTLS(options: options)
-            }
-            let conn = NWConnection(host: NWEndpoint.Host(host),
-                                    port: NWEndpoint.Port(rawValue: port)!,
-                                    using: params)
+        // NWParameters.tls already includes the TLS protocol; set SNI and
+        // require modern TLS through the TCP options.
+        let tlsOptions = NWProtocolTLS.Options()
+        sec_protocol_options_set_tls_version_min(tlsOptions.securityProtocolOptions, .TLSv13)
+        sec_protocol_options_set_tls_server_name(tlsOptions.securityProtocolOptions, host)
+        let params = NWParameters(tls: tlsOptions)
+        let conn = NWConnection(host: NWEndpoint.Host(host),
+                                port: NWEndpoint.Port(rawValue: port)!,
+                                using: params)
             var finished = false
             let lock = NSLock()
             let done: (Result<Data, Error>) -> Void = { result in

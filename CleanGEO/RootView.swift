@@ -159,7 +159,7 @@ struct SafariBlockerStatusView: View {
             }
         }
         .task {
-            let status = await withCheckedContinuation { cont in
+            let status: Bool = await withCheckedContinuation { cont in
                 SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: FilterListManager.blockerID) { enabled, _ in
                     cont.resume(returning: enabled)
                 }

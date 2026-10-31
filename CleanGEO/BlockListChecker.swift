@@ -106,7 +106,7 @@ public final class ISPBlockDetector: ObservableObject {
         for d in canaryDomains {
             // System resolver via CFNetwork-level getaddrinfo.
             let sysIPs = Self.systemResolve(d)
-            let ours = (try? resolver.resolve(d))?.addresses ?? []
+            let ours = (try? await resolver.resolve(d))?.addresses ?? []
             if !sysIPs.isEmpty && !ours.isEmpty && Set(sysIPs) != Set(ours) {
                 hijack = true
                 break
@@ -119,7 +119,7 @@ public final class ISPBlockDetector: ObservableObject {
         for host in controlDomains {
             let sysIPs = Self.systemResolve(host)
             guard let ip = sysIPs.first else { continue }
-            let reachable = await Self.tcpReachable(ip, port: 443, timeout: 3)
+            let reachable = (try? await Self.tcpReachable(ip, port: 443, timeout: 3)) ?? false
             if !reachable { ipBlock = true; break }
         }
         ipBlockDetected = ipBlock
@@ -148,8 +148,8 @@ public final class ISPBlockDetector: ObservableObject {
         return out
     }
 
-    static func tcpReachable(_ ip: String, port: UInt16, timeout: TimeInterval) async -> Bool {
-        await withCheckedThrowingContinuation { cont in
+    static func tcpReachable(_ ip: String, port: UInt16, timeout: TimeInterval) async throws -> Bool {
+        try await withCheckedThrowingContinuation { cont in
             let conn = NWConnection(host: NWEndpoint.Host(ip),
                                     port: NWEndpoint.Port(rawValue: port)!,
                                     using: .tcp)

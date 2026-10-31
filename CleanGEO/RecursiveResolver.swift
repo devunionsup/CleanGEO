@@ -189,7 +189,7 @@ public final class RecursiveResolver {
                 }
                 if glueIPs.isEmpty {
                     for host in newNS.prefix(2) {
-                        if let r = try? resolveRecursive(host, type: .a, chain: &chain, depth: depth + 1) {
+                        if let r = try? await resolveRecursive(host, type: .a, chain: &chain, depth: depth + 1) {
                             glueIPs.append(contentsOf: r.addresses)
                         }
                     }

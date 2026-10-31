@@ -325,7 +325,8 @@ public final class FilterCompiler {
         for ch in s {
             switch ch {
             case ".", "?", "+", "(", ")", "[", "]", "{", "}", "|", "$", "\\":
-                out.append("\\").append(ch)
+                out.append("\\")
+                out.append(ch)
             case "*":
                 out.append(".*")
             case "^":

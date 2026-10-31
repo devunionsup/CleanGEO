@@ -40,7 +40,7 @@ public final class TunnelManager: ObservableObject {
                 if let existing = ours.first {
                     self.manager = existing
                     self.status = existing.connection.status
-                    existing.connection.observe(\.status) { [weak self] conn in
+                    existing.connection.observe(\.status, options: []) { [weak self] conn, _ in
                         DispatchQueue.main.async {
                             self?.status = conn.status
                         }
@@ -86,16 +86,16 @@ public final class TunnelManager: ObservableObject {
         reloadStatus()
     }
 
-    public func disable() async throws {
+    public func disable() async {
         guard let mgr = manager else { return }
-        try await mgr.connection.stopVPNTunnel()
+        try? await mgr.connection.stopVPNTunnel()
         reloadStatus()
     }
 
     /// Full removal of the VPN profile from the system.
-    public func removeFromDevice() async throws {
+    public func removeFromDevice() async {
         guard let mgr = manager else { return }
-        mgr.removeFromPreferences()
+        try? await mgr.removeFromPreferences()
         manager = nil
         status = .invalid
     }

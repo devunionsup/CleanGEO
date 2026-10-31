@@ -86,8 +86,8 @@ public enum DNSWire {
 
         // Header
         var flags: UInt16 = 0x0100 // RD
-        out.append(UInt16(id >> 8)); out.append(UInt16(id & 0xFF))
-        out.append(UInt16(flags >> 8)); out.append(UInt16(flags & 0xFF))
+        out.append(UInt8(id >> 8)); out.append(UInt8(id & 0xFF))
+        out.append(UInt8(flags >> 8)); out.append(UInt8(flags & 0xFF))
         out.append(0); out.append(1)   // QDCOUNT = 1
         out.append(0); out.append(0)   // ANCOUNT
         out.append(0); out.append(0)   // NSCOUNT
@@ -95,17 +95,17 @@ public enum DNSWire {
 
         // QNAME
         appendName(name, to: &out)
-        out.append(UInt16(question.type.rawValue >> 8))
-        out.append(UInt16(question.type.rawValue & 0xFF))
+        out.append(UInt8(question.type.rawValue >> 8))
+        out.append(UInt8(question.type.rawValue & 0xFF))
         out.append(0); out.append(1)   // IN
 
         // OPT record: root name, type OPT, class = payload size, TTL: DO bit in extended flags
         out.append(0)
         out.append(UInt16(DNSRecordType.opt.rawValue >> 8)); out.append(UInt16(DNSRecordType.opt.rawValue & 0xFF))
-        out.append(UInt16(payloadSize >> 8)); out.append(UInt16(payloadSize & 0xFF))
+        out.append(UInt8(payloadSize >> 8)); out.append(UInt8(payloadSize & 0xFF))
         let doBit: UInt32 = ednsDOBit ? 0x00008000 : 0
-        out.append(UInt32(doBit >> 24)); out.append(UInt32((doBit >> 16) & 0xFF))
-        out.append(UInt32((doBit >> 8) & 0xFF)); out.append(UInt32(doBit & 0xFF))
+        out.append(UInt8(doBit >> 24)); out.append(UInt8((doBit >> 16) & 0xFF))
+        out.append(UInt8((doBit >> 8) & 0xFF)); out.append(UInt8(doBit & 0xFF))
         out.append(0); out.append(0)   // RDLENGTH = 0
         return out
     }
@@ -190,7 +190,7 @@ public enum DNSWire {
             if rdLen > 0 {
                 let start = r.offset
                 switch DNSRecordType(rawValue: t) {
-                case .ns, .cname, .ptr, .dname:
+                case .ns, .cname, .ptr:
                     var jumps2 = Set<Int>()
                     rdata = try readName(&r, jumps: &jumps2).data(using: .utf8) ?? Data()
                 case .soa:

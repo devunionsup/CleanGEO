@@ -141,7 +141,7 @@
 
 ! mykadri.tv
 
-||hdd.mykadri.com*mp4*$all
+||*hdd*mykadri.com$all
 ||statline.cc*mp4*$all
 ||vidium.nshamanauri.ge*mp4*$all
 ||img.mykadri.click*asvla2*$all

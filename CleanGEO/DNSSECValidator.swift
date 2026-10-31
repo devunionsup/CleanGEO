@@ -103,7 +103,8 @@ public final class DNSSECValidator {
         let owner = canonicalize(first.name, labels: Int(rrsig.labels))
 
         var signedData = Data()
-        try DNSWire.appendName(owner, to: &signedData)
+        var ownerWire = Data()
+        try DNSWire.appendName(owner, to: &ownerWire)
         var typeCoveredBE = rrsig.typeCovered
         var tmp = Data()
         tmp.append(UInt8(typeCoveredBE >> 8)); tmp.append(UInt8(typeCoveredBE & 0xFF))
@@ -124,7 +125,7 @@ public final class DNSSECValidator {
 
         for rec in rrset {
             var rd = Data()
-            rd.append(owner)
+            rd.append(ownerWire)
             rd.append(UInt8(rrsig.typeCovered >> 8)); rd.append(UInt8(rrsig.typeCovered & 0xFF))
             rd.append(0); rd.append(1) // class IN
             // TTL: the RRSIG's original TTL (RFC 4034 §3.1.8.1).
@@ -152,7 +153,8 @@ public final class DNSSECValidator {
                 throw DNSSECError.signatureMismatch
             }
             let sigData = try derFromRaw(sig)
-            guard key.isValidSignature(sigData, for: signedData) else {
+            guard let signature = try? P256.Signing.ECDSASignature(derRepresentation: sigData),
+                  key.isValidSignature(signature, for: signedData) else {
                 throw DNSSECError.signatureMismatch
             }
         case .ecdsap384sha384:
@@ -161,7 +163,8 @@ public final class DNSSECValidator {
                 throw DNSSECError.signatureMismatch
             }
             let sigData = try derFromRaw(sig)
-            guard key.isValidSignature(sigData, for: signedData) else {
+            guard let signature = try? P384.Signing.ECDSASignature(derRepresentation: sigData),
+                  key.isValidSignature(signature, for: signedData) else {
                 throw DNSSECError.signatureMismatch
             }
         case .ed25519:

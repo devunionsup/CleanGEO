@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 public enum DNSRecordType: UInt16 {
     case a = 1, ns = 2, cname = 5, soa = 6, ptr = 12, mx = 15, txt = 16
@@ -94,14 +95,14 @@ public enum DNSWire {
         out.append(0); out.append(1)   // ARCOUNT = 1 (OPT)
 
         // QNAME
-        appendName(name, to: &out)
+        try appendName(name, to: &out)
         out.append(UInt8(question.type.rawValue >> 8))
         out.append(UInt8(question.type.rawValue & 0xFF))
         out.append(0); out.append(1)   // IN
 
         // OPT record: root name, type OPT, class = payload size, TTL: DO bit in extended flags
         out.append(0)
-        out.append(UInt16(DNSRecordType.opt.rawValue >> 8)); out.append(UInt16(DNSRecordType.opt.rawValue & 0xFF))
+        out.append(UInt8(DNSRecordType.opt.rawValue >> 8)); out.append(UInt8(DNSRecordType.opt.rawValue & 0xFF))
         out.append(UInt8(payloadSize >> 8)); out.append(UInt8(payloadSize & 0xFF))
         let doBit: UInt32 = ednsDOBit ? 0x00008000 : 0
         out.append(UInt8(doBit >> 24)); out.append(UInt8((doBit >> 16) & 0xFF))
@@ -125,7 +126,7 @@ public enum DNSWire {
     static func randomCase(_ name: String) -> String {
         var result = ""
         for ch in name.lowercased() {
-            result.append(Bool.random() ? ch.uppercased() : ch)
+            result.append(Bool.random() ? Character(ch.uppercased()) : ch)
         }
         return result
     }
@@ -138,7 +139,7 @@ public enum DNSWire {
     // MARK: - Decoder
 
     public static func decode(data: Data) throws -> DNSMessage {
-        var reader = ByteReader(data: data)
+        var reader = ByteReader(data)
         var msg = DNSMessage()
         let id = try reader.readUInt16()
         let flags = try reader.readUInt16()
@@ -200,7 +201,7 @@ public enum DNSWire {
                     var soa = Data()
                     try appendName(mname, to: &soa)
                     try appendName(rname, to: &soa)
-                    soa.append(contentsOf: r.readRaw(20) ?? Data())
+                    soa.append(contentsOf: (try? r.readRaw(20)) ?? Data())
                     rdata = soa
                 case .mx:
                     var jumps2 = Set<Int>()
@@ -211,7 +212,7 @@ public enum DNSWire {
                     rdata.append(contentsOf: exch.utf8)
                 default:
                     r.offset = start
-                    rdata = try r.readRaw(rdLen) ?? Data()
+                    rdata = (try? r.readRaw(rdLen)) ?? Data()
                 }
                 // Ensure we ended exactly at the record boundary.
                 _ = try r.readRaw(max(0, (start + rdLen) - r.offset))
@@ -384,5 +385,3 @@ public struct DSData {
         }
     }
 }
-
-import CryptoKit

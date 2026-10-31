@@ -1,5 +1,7 @@
 # Local secrets — never commit
 cert_unpacked/
+cert_tmp/
 *.p12
-certificate 1.zip
-tools/p12_base64.txt
+*.zip
+signing/*.p12
+tools/P12_CERT_B64.txt

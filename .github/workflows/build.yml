@@ -53,7 +53,7 @@ jobs:
       - name: Install provisioning profile
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp cert_unpacked/P12cert/MY.mobileprovision \
+          cp signing/MY.mobileprovision \
             ~/Library/MobileDevice/Provisioning\ Profiles/037b6f42-9896-4b55-8ec6-24a37452ad3a.mobileprovision
 
       - name: Build (unsigned IPA, user signs with their own cert)

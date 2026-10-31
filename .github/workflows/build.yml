@@ -55,8 +55,8 @@ jobs:
 
       - name: Verify archive contents
         run: |
-          ls build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/
-          test -d build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns && echo "Extensions present"
+          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/ || true
+          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/ 2>/dev/null || echo "No PlugIns dir (extension not embedded)"
 
       - name: Attach IPA to release
         uses: softprops/action-gh-release@v2

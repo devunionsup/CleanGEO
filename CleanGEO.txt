@@ -142,7 +142,7 @@
 ! mykadri.tv
 
 ||*hdd*mykadri.com$all
-||statline.cc*mp4*$all
+||*statline.cc*$all
 ||vidium.nshamanauri.ge*mp4*$all
 ||img.mykadri.click*asvla2*$all
 

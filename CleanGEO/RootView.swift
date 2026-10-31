@@ -662,6 +662,7 @@ struct DNSScreen: View {
     @State private var testing = false
 
     var body: some View {
+        let p = CGPalette.scheme(scheme)
         VStack(spacing: 0) {
             HStack(spacing: 13) {
                 CGIcon(appState.tunnel.status == .connected ? "checkmark" : "network",

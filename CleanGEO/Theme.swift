@@ -638,6 +638,15 @@ public struct CGBarsChart: View {
         self.labels = labels
     }
 
+    private func barFill(_ i: Int) -> AnyShapeStyle {
+        if i == values.count - 1 {
+            let grad = LinearGradient(colors: [CGColor_.accent2, CGColor_.accent],
+                                      startPoint: .top, endPoint: .bottom)
+            return AnyShapeStyle(grad)
+        }
+        return AnyShapeStyle(CGPalette.scheme(scheme).accentSoft)
+    }
+
     public var body: some View {
         let p = CGPalette.scheme(scheme)
         let maxV = values.max() ?? 1
@@ -645,10 +654,7 @@ public struct CGBarsChart: View {
             ForEach(values.indices, id: \.self) { i in
                 VStack(spacing: 6) {
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(i == values.count - 1
-                              ? AnyShapeStyle(LinearGradient(colors: [CGColor_.accent2, CGColor_.accent],
-                                                             startPoint: .top, endPoint: .bottom))
-                              : AnyShapeStyle(p.accentSoft))
+                        .fill(barFill(i))
                         .frame(maxHeight: .infinity)
                         .scale(y: appeared ? values[i] / maxV : 0.001, anchor: .bottom)
                     Text(labels[i])

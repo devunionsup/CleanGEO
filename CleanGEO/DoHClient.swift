@@ -127,7 +127,6 @@ public final class DoHClient {
         // NWParameters.tls already includes the TLS protocol; set SNI and
         // require modern TLS through the TCP options.
         let tlsOptions = NWProtocolTLS.Options()
-        sec_protocol_options_set_tls_version_min(tlsOptions.securityProtocolOptions, .TLSv13)
         sec_protocol_options_set_tls_server_name(tlsOptions.securityProtocolOptions, host)
         let params = NWParameters(tls: tlsOptions)
         let conn = NWConnection(host: NWEndpoint.Host(host),

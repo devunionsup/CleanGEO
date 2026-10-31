@@ -1,0 +1,82 @@
+/* CleanGEO — ქართული */
+
+"app.name" = "CleanGEO";
+"tab.home" = "მთავარი";
+"tab.filters" = "ფილტრები";
+"tab.schedule" = "განრიგი";
+"tab.dns" = "DNS";
+"tab.settings" = "პარამეტრები";
+
+"home.tagline" = "რეკლამის ბლოკირება, საკუთარი DNS და პრივატულობის დაცვა — ერთ აპლიკაციაში";
+"home.safari.title" = "Safari-ს დაცვა";
+"home.safari.howto" = "როგორ ჩავრთო?";
+"home.safari.howto.close" = "დახურე ინსტრუქცია";
+"home.safari.step1" = "1. გახსენით პარამეტრები → Safari → გაფართოებები.";
+"home.safari.step2" = "2. აირჩიეთ CleanGEO და ჩართეთ ნებართვა.";
+"home.safari.step3" = "3. დაბრუნდით აქ და დააჭირეთ „განახლება“ — ფილტრები დაყენდება ავტომატურად.";
+"home.safari.update.now" = "განახლება ახლავე";
+"status.on" = "ჩართულია";
+"status.off" = "გამორთულია";
+
+"home.dns.title" = "CleanGEO DNS";
+"home.dns.desc" = "საკუთარი რეკურსიული რეზოლვერი DNSSEC-ით, DoH და DoT შიფრაციით. Google-ის, Cloudflare-ის ან AdGuard-ის DNS არ გამოიყენება.";
+"home.dns.settings" = "DNS-ის პარამეტრები";
+
+"home.isp.title" = "ინტერნეტ-პროვაიდერის ჩარევა";
+"home.isp.check" = "შემოწმება";
+"home.isp.hijack.yes" = "აღმოჩენილია DNS-ჩარევა: პროვაიდერი ცვლის პასუხებს.";
+"home.isp.hijack.no" = "DNS-ჩარევა არ ფიქსირდება.";
+"home.isp.ipblock.yes" = "აღმოჩენილია IP-დონის შეზღუდვა — რეკომენდირებულია ტუნელის ჩართვა.";
+"home.isp.ipblock.no" = "IP-დონის შეზღუდვა არ ფიქსირდება.";
+
+"filters.stats" = "სტატისტიკა";
+"filters.lastUpdate" = "ბოლო განახლება";
+"filters.ruleCount" = "წესების რაოდენობა";
+"filters.listCount" = "ჩატვირთული ლისტები";
+"filters.lastError" = "ბოლო შეცდომა";
+"filters.lists" = "ბლოკ-ლისტები";
+"filters.updateNow" = "განახლება ახლავე";
+"filters.update.done" = "განახლდა: %d წესი, %d ლისტი";
+"filters.update.error" = "შეცდომა: %@";
+"filters.footer" = "წარუმატებელი განახლების დროს წინა მომუშავი ვერსია რჩება უცვლელად.";
+
+"schedule.header" = "დღეში ოთხჯერ განახლება";
+"schedule.time" = "დრო %d";
+"schedule.add" = "დაამატე დრო";
+"schedule.footer" = "iOS არ იძლევა ზუსტი ფონური გაშვების გარანტიას — აპლიკაცია ასევე ამოწმებს განრიგს გახსნისას.";
+
+"dns.tunnel" = "ტუნელი";
+"dns.vpn" = "CleanGEO VPN";
+"dns.vpn.hint" = "ტუნელი იყენებს NetworkExtension-ს; პირველი ჩართვისას iOS ითხოვს ნებართვას.";
+"dns.doh" = "DoH მისამართი";
+"dns.dot" = "DoT მისამართი";
+"dns.tls" = "TLS";
+"dns.test" = "ტესტი";
+"dns.test.domain" = "დომენი";
+"dns.test.run" = "შემოწმება";
+"dns.test.running" = "მიმდინარეობს…";
+"dns.test.error" = "შეცდომა: %@";
+
+"settings.privacy" = "პრივატულობა";
+"settings.history" = "ისტორიის შენახვა";
+"settings.privacy.note" = "CleanGEO არ ინახავს და არ გადასცემს DNS-ისტორიას. არ არსებობს ანალიტიკა.";
+"settings.security" = "უსაფრთხოება";
+"settings.security.filters" = "ფილტრების გადამოწმება";
+"settings.security.dnssec" = "DNSSEC";
+"settings.security.0x20" = "0x20 / შემთხვევითი ID";
+"settings.on" = "ჩართულია";
+"settings.about" = "შესახებ";
+"settings.version" = "ვერსია";
+"settings.madein" = "CleanGEO — შექმნილია საქართველოსთვის 🇬🇪";
+
+"error.filter.empty" = "ფილტრი ცარიელია";
+"error.filter.toomany" = "წესების რაოდენობა აღემატება ლიმიტს";
+"error.filter.malformed" = "არასწორი წესი: %@";
+"error.update.failed" = "ვერცერთი ბლოკ-ლისტი არ ჩაიტვირთა: %@";
+"error.dns.offline" = "ინტერნეტი მიუწვდომელია";
+"error.dns.timeout" = "DNS სერვერმა პასუხი არ დააბრუნა (timeout)";
+"error.dns.malformed" = "DNS პასუხი დაზიანებულია";
+"error.dns.nxdomain" = "დომენი არ არსებობს";
+"error.dns.blocked" = "დომენი დაბლოკილია ფილტრებით";
+"error.dnssec.bogus" = "DNSSEC შემოწმება ვერ გაიარა: %@";
+"error.doh.status" = "DoH სერვერის შეცდომა (HTTP %d)";

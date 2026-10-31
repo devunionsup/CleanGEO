@@ -1,0 +1,6 @@
+{
+  "NSExtension" : {
+    "NSExtensionPointIdentifier" : "com.apple.Safari.content-blocker",
+    "NSExtensionPrincipalClass" : "$(PRODUCT_MODULE_NAME).BlockerRequestHandler"
+  }
+}

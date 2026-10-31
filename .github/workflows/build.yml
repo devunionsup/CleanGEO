@@ -71,7 +71,8 @@ jobs:
               DEVELOPMENT_TEAM=S456H8HVXD \
               CODE_SIGN_STYLE=Manual \
               CODE_SIGN_IDENTITY="iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
-              PROVISIONING_PROFILE_SPECIFIER="00008101-001D68192E61001ERWL6R9" | xcbeautify; then
+              PROVISIONING_PROFILE_SPECIFIER="00008101-001D68192E61001ERWL6R9" \
+              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO | xcbeautify; then
               echo signed > build/signed.flag
             else
               echo "Signed build failed (profile does not cover the extension bundle ID). Falling back to unsigned."
@@ -113,6 +114,33 @@ jobs:
           rm -rf Payload
           ls -la *.ipa
 
+      - name: Sign main app with user cert (extension stays unsigned)
+        env:
+          P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}
+        if: env.P12_CERT_B64 != '' && runner.os == 'macOS'
+        run: |
+          APP=build/Payload_tmp/CleanGEO.app
+          mkdir -p build/Payload_tmp
+          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload_tmp/
+          # Remove the unsigned extension so the app bundle matches the single-App-ID profile
+          rm -rf build/Payload_tmp/CleanGEO.app/PlugIns
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' build/Payload_tmp/CleanGEO.app/Info.plist
+          codesign -f -s "iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
+            --entitlements <(security cms -D -i signing/MY.mobileprovision | /usr/bin/python3 -c "import plistlib,sys; print(plistlib.dumps(plistlib.loads(sys.stdin.buffer.read())['Entitlements']).decode())") \
+            build/Payload_tmp/CleanGEO.app
+          codesign -vv build/Payload_tmp/CleanGEO.app
+          cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload_tmp
+
+      - name: Attach IPA to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: CleanGEO build ${{ github.run_number }}
+          prerelease: true
+          files: |
+            build/CleanGEO-unsigned.ipa
+            build/CleanGEO-signed-adhoc.ipa
+
       - name: Verify signing (informational)
         run: |
           codesign -dvv build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app 2>&1 | head -20 || true
@@ -127,16 +155,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: CleanGEO build ${{ github.run_number }} (unsigned IPA)
+          name: CleanGEO build ${{ github.run_number }}
           prerelease: true
-          files: build/CleanGEO-unsigned.ipa
+          files: |
+            build/CleanGEO-unsigned.ipa
+            build/CleanGEO-signed-adhoc.ipa
+        if: always()
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CleanGEO-unsigned-ipa
-          path: build/CleanGEO-unsigned.ipa
-          if-no-files-found: error
+          name: CleanGEO-ipa
+          path: |
+            build/CleanGEO-unsigned.ipa
+            build/CleanGEO-signed-adhoc.ipa
+          if-no-files-found: ignore
 
       - name: Upload test summary
         if: always()

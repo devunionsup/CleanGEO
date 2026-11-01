@@ -38,17 +38,18 @@ jobs:
             -destination "id=$SIM_UDID" -derivedDataPath DerivedData-cleangeo \
             CODE_SIGNING_ALLOWED=NO | tail -n 60
 
-      - name: Archive (unsigned, both extensions must be embedded)
+      - name: Build device app (unsigned) and package IPA
         run: |
           set -o pipefail
-          xcodebuild archive -project CleanGEO.xcodeproj -scheme CleanGEO -configuration Release \
-            -destination 'generic/platform=iOS' -archivePath build/CleanGEO.xcarchive \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" AD_HOC_CODE_SIGNING_ALLOWED=YES | tail -n 40
-          for f in build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/Info.plist build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/*.appex/Info.plist; do echo "== $f"; plutil -extract CFBundleIdentifier raw "$f" || echo MISSING; done || true
+          xcodebuild build -project CleanGEO.xcodeproj -scheme CleanGEO -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath DerivedData-device \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -n 40
+          APP=DerivedData-device/Build/Products/Release-iphoneos/CleanGEO.app
+          for f in "$APP/Info.plist" "$APP"/PlugIns/*.appex/Info.plist; do echo "== $f"; plutil -extract CFBundleIdentifier raw "$f" || echo MISSING; done
+          test -d "$APP/PlugIns/BlockerExtension.appex"
+          test -d "$APP/PlugIns/CleanGEOVPN.appex"
           mkdir -p Payload
-          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app Payload/
-          test -d Payload/CleanGEO.app/PlugIns/BlockerExtension.appex
-          test -d Payload/CleanGEO.app/PlugIns/CleanGEOVPN.appex
+          cp -R "$APP" Payload/
           zip -qr CleanGEO-unsigned.ipa Payload
       - uses: actions/upload-artifact@v4
         with:

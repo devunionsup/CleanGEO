@@ -36,6 +36,7 @@ struct WebViewHost: UIViewControllerRepresentable {
         let vc = UIViewController()
         vc.view.backgroundColor = .clear
         let web = InterfaceBridge.makeWebView()
+        context.coordinator.bridge = InterfaceBridge()
         web.translatesAutoresizingMaskIntoConstraints = false
         vc.view.addSubview(web)
         NSLayoutConstraint.activate([
@@ -44,7 +45,7 @@ struct WebViewHost: UIViewControllerRepresentable {
             web.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor),
             web.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor)
         ])
-        context.coordinator.bridge.attach(to: web)
+        context.coordinator.bridge?.attach(to: web)
         return vc
     }
 
@@ -53,7 +54,7 @@ struct WebViewHost: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     final class Coordinator {
-        let bridge = InterfaceBridge()
+        var bridge: InterfaceBridge?
     }
 }
 
@@ -71,6 +72,7 @@ enum InterfaceStartup {
             if FilterListManager.shared.scheduledUpdateDue() {
                 _ = try? await FilterListManager.shared.updateAll()
             }
+            try? await FilterListManager.shared.reloadSafariBlocker()
         }
     }
 }
@@ -121,15 +123,6 @@ struct RootView: View {
                 if phase == .active { InterfaceStartup.checkOnForeground() }
             }
             .task { await InterfaceStartup.checkOnLaunch() }
-    }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active {
-                Task {
-                    _ = try? await FilterListManager.shared.updateAllIfDue()
-                    try? await FilterListManager.shared.reloadSafariBlocker()
-                }
-            }
-        }
     }
 }
 

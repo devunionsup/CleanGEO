@@ -23,7 +23,7 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     private let filters = FilterListManager.shared
     private let tunnel = TunnelManager.shared
     private let isp = ISPBlockDetector.shared
-    private var statusObserver: NSKeyValueObservation?
+    private var statusTimer: Timer?
 
     // MARK: - შექმნა
 
@@ -48,7 +48,7 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         if let url {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
-        statusObserver = tunnel.observe(\.status, options: [.initial, .new]) { [weak self] _, _ in
+        statusTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.pushState() }
         }
         applyTheme()
@@ -56,14 +56,14 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     }
 
     deinit {
-        statusObserver?.invalidate()
+        statusTimer?.invalidate()
     }
 
     // MARK: - მდგომარეობის push
 
     private func safariEnabled(_ done: @escaping @MainActor (Bool) -> Void) {
-        SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: FilterListManager.blockerID) { enabled, _ in
-            Task { @MainActor in done(enabled) }
+        SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: FilterListManager.blockerID) { state, _ in
+            Task { @MainActor in done(state?.isEnabled == true) }
         }
     }
 

@@ -143,6 +143,10 @@ jobs:
         # ინფორმაციულია — მთავარი არტეფაქტი unsigned IPA-ა.
         continue-on-error: true
         run: |
+          # entitlements ჯერ რეალურ ფაილში — codesign process-substitution-ს (mmap)
+          # ვერ კითხულობს და "cannot read entitlement data"-ზე ვარდებოდა
+          security cms -D -i signing/MY.mobileprovision > build/profile.plist
+          /usr/bin/python3 -c "import plistlib; print(plistlib.dumps(plistlib.load(open('build/profile.plist','rb'))['Entitlements']).decode())" > build/app.entitlements
           APP=build/Payload_tmp/CleanGEO.app
           mkdir -p build/Payload_tmp
           cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload_tmp/
@@ -150,7 +154,7 @@ jobs:
           rm -rf build/Payload_tmp/CleanGEO.app/PlugIns
           /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' build/Payload_tmp/CleanGEO.app/Info.plist
           codesign -f -s "iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
-            --entitlements <(security cms -D -i signing/MY.mobileprovision | /usr/bin/python3 -c "import plistlib,sys; print(plistlib.dumps(plistlib.loads(sys.stdin.buffer.read())['Entitlements']).decode())") \
+            --entitlements build/app.entitlements \
             build/Payload_tmp/CleanGEO.app
           codesign -vv build/Payload_tmp/CleanGEO.app
           cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload_tmp

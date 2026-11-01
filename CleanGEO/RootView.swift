@@ -74,10 +74,10 @@ struct RootView: View {
                     }
                     ScreenSwitch(current: ui.current)
                         .padding(.top, ui.current == "home" ? 0 : 6)
-                    Color.clear.frame(height: 120) // დოკის ადგილი
+                    // დოკის ადგილი: Home Indicator-ის ზონის ჩათვლით
+                    Color.clear.frame(height: CGLayout.dockBottomSpace)
                 }
             }
-            .ignoresSafeArea(edges: .bottom)
             CGDock(activeTab: ui.tab) { key in
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     ui.tab = key
@@ -142,6 +142,7 @@ struct HomeScreen: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var ui: UIState
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         let p = CGPalette.scheme(scheme)
@@ -161,7 +162,9 @@ struct HomeScreen: View {
             .padding(.horizontal, 4)
             .padding(.top, 4)
 
-            WaterGlobe(score: score) {
+            // რესპონსიული ზომა: Landscape-ში (მცირე სიმაღლე) სფერო იკუმშება,
+            // რომ ყველა ელემენტი ერთ Scroll View-ში ჩაჯდეს.
+            WaterGlobe(score: score, size: verticalSizeClass == .compact ? CGLayout.globeSizeCompact : nil) {
                 toggleProtection()
             }
             .padding(.top, 14)
@@ -292,7 +295,7 @@ struct HomeScreen: View {
             }
         }
         .padding(14)
-        .frame(width: 118, alignment: .leading)
+        .frame(minWidth: CGLayout.layerCardMin, maxWidth: CGLayout.layerCardMax, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(on ? AnyShapeStyle(LinearGradient(colors: [CGColor_.accent, CGColor_.deep],
@@ -324,6 +327,7 @@ struct StatsScreen: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var ui: UIState
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var range = "w" // დღე / კვირა / თვე
 
     // სატესტო მონაცემები (აპლიკაციას არ აქვს დაბლოკვების აღრიცხვა)
@@ -354,7 +358,9 @@ struct StatsScreen: View {
                     .tracking(-1.5)
                     .foregroundColor(p.text)
                     .monospacedDigit()
-                CGBarsChart(values: r.values, labels: r.labels)
+                // Landscape-ზე დიაგრამა იკუმშება, რომ შიგთავსი სრულად ჩანდეს
+                CGBarsChart(values: r.values, labels: r.labels,
+                            maxHeight: verticalSizeClass == .compact ? CGLayout.barsMaxHeightCompact : nil)
                     .padding(.top, 14)
             }
             .padding(18)

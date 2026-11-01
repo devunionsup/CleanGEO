@@ -25,6 +25,32 @@ public enum CGColor_ {
     public static let bad     = Color(red: 0xf0 / 255, green: 0x4f / 255, blue: 0x5f / 255)
 }
 
+// MARK: - რესპონსიული layout კონსტანტები (ყველა iPhone მოდელისთვის ერთი სისტემა)
+//
+// ფიქსირებული ზომები მხოლოდ კონტროლებისთვისაა (ღილაკები, ხატულები);
+// ყველაფერი, რაც ეკრანზე უნდა ადაპტირდეს, size class-ებიდან ითვლება.
+
+public enum CGLayout {
+    /// წყლის სფეროს დიამეტრი Portrait-ში
+    public static let globeSize: CGFloat = 228
+    /// სფერო მცირე სიმაღლის ეკრანზე (Landscape)
+    public static let globeSizeCompact: CGFloat = 156
+    /// სვეტებიანი დიაგრამის მაქს. სიმაღლე
+    public static let barsMaxHeight: Double = 130
+    public static let barsMaxHeightCompact: Double = 96
+    /// მცურავი დოკის სიმაღლე
+    public static let dockHeight: CGFloat = 68
+    public static let dockHeightCompact: CGFloat = 62
+    /// დოკის ცენტრალური ღილაკი
+    public static let dockCenterSize: CGFloat = 64
+    public static let dockCenterSizeCompact: CGFloat = 52
+    /// დაცვის ფენების ბარათის სიგანე — დიაპაზონი, არა ფიქსირებული მნიშვნელობა
+    public static let layerCardMin: CGFloat = 112
+    public static let layerCardMax: CGFloat = 132
+    /// სქროლის ქვედა სივრცე: დოკი + Home Indicator-ის ზონა
+    public static let dockBottomSpace: CGFloat = 132
+}
+
 // MARK: - თემაზე დამოკიდებული პალიტრა
 
 public struct CGPalette {
@@ -554,13 +580,16 @@ public struct CGSelector: View {
 
 public struct WaterGlobe: View {
     let score: Int
+    /// nil = ნაგულისხმევი ზომა; მცირე სიმაღლის (Landscape) ეკრანზე პატარა ზომა გადაეცემა.
+    var size: CGFloat? = nil
     let action: () -> Void
     @Environment(\.colorScheme) private var scheme
     @State private var spin1 = false
     @State private var spin2 = false
 
-    public init(score: Int, action: @escaping () -> Void) {
+    public init(score: Int, size: CGFloat? = nil, action: @escaping () -> Void) {
         self.score = score
+        self.size = size
         self.action = action
     }
 
@@ -597,7 +626,7 @@ public struct WaterGlobe: View {
                         .foregroundColor(p.text2)
                 }
             }
-            .frame(width: 228, height: 228)
+            .frame(width: size ?? CGLayout.globeSize, height: size ?? CGLayout.globeSize)
         }
         .buttonStyle(.plain)
         .onAppear {
@@ -630,12 +659,15 @@ private struct WaterBlob: View {
 public struct CGBarsChart: View {
     let values: [Double]
     let labels: [String]
+    /// nil = ნაგულისხმევი მაქსიმალური სიმაღლე; Landscape-ზე იკუმშება.
+    var maxHeight: Double? = nil
     @Environment(\.colorScheme) private var scheme
     @State private var appeared = false
 
-    public init(values: [Double], labels: [String]) {
+    public init(values: [Double], labels: [String], maxHeight: Double? = nil) {
         self.values = values
         self.labels = labels
+        self.maxHeight = maxHeight
     }
 
     private func barFill(_ i: Int) -> AnyShapeStyle {
@@ -664,7 +696,7 @@ public struct CGBarsChart: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .frame(height: 130)
+        .frame(height: maxHeight ?? CGLayout.barsMaxHeight)
         .onAppear {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.8)) { appeared = true }
         }
@@ -732,6 +764,7 @@ public struct CGDock: View {
     let activeTab: String
     let onSelect: (String) -> Void
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public init(activeTab: String, onSelect: @escaping (String) -> Void) {
         self.activeTab = activeTab
@@ -740,15 +773,19 @@ public struct CGDock: View {
 
     public var body: some View {
         let p = CGPalette.scheme(scheme)
+        // ერთიანი დოკი ყველა ზომაზე: ვიწრო ეკრანზე (iPhone) კომპაქტური
+        // ცენტრალური ღილაკით, რომ ლეიბლებს არ აკლდეს ადგილი; ფართო კლასზე — მცურავი.
+        let isCompact = horizontalSizeClass == .compact
         HStack(spacing: 0) {
             dockTab("home", "მთავარი", "house")
             dockTab("stats", "სტატისტიკა", "chart.bar")
             centerButton
+                .padding(.horizontal, isCompact ? 2 : 6)
             dockTab("filt", "ფილტრები", "line.3.horizontal.decrease")
             dockTab("more", "მეტი", "ellipsis")
         }
-        .padding(.horizontal, 8)
-        .frame(height: 68)
+        .padding(.horizontal, isCompact ? 4 : 8)
+        .frame(height: isCompact ? CGLayout.dockHeightCompact : CGLayout.dockHeight)
         .background(
             RoundedRectangle(cornerRadius: 34, style: .continuous)
                 .fill(.ultraThinMaterial)
@@ -779,9 +816,10 @@ public struct CGDock: View {
             onSelect("prot")
         } label: {
             Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 24, weight: .semibold))
+                .font(.system(size: horizontalSizeClass == .compact ? 20 : 24, weight: .semibold))
                 .foregroundColor(.white)
-                .frame(width: 64, height: 64)
+                .frame(width: horizontalSizeClass == .compact ? CGLayout.dockCenterSizeCompact : CGLayout.dockCenterSize,
+                       height: horizontalSizeClass == .compact ? CGLayout.dockCenterSizeCompact : CGLayout.dockCenterSize)
                 .background(Circle().fill(LinearGradient(colors: [CGColor_.accent2, CGColor_.deep],
                                                          startPoint: .topLeading, endPoint: .bottomTrailing)))
                 .overlay(Circle().stroke(p.bg, lineWidth: 5))

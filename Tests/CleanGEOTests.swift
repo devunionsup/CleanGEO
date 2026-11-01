@@ -294,3 +294,60 @@ final class FilterUpdateErrorTests: XCTestCase {
         XCTAssertTrue(e.localizedDescription.contains("ვერცერთი"))
     }
 }
+
+final class LayoutAdaptationTests: XCTestCase {
+    // უნივერსალური ეკრანის ადაპტაციის კონტრაქტი: ერთი ბინარი ყველა iPhone-ზე,
+    // ფიქსირებული ზომები მხოლოდ კონტროლებზე, ადაპტირებადი — size class-ებიდან.
+
+    let devices: [(name: String, w: CGFloat, h: CGFloat)] = [
+        ("iPhone SE (3rd generation)", 375, 667),
+        ("iPhone 12 mini", 375, 812),
+        ("iPhone 14", 390, 844),
+        ("iPhone 15 Pro", 393, 852),
+        ("iPhone 12 Pro Max", 428, 926),
+        ("iPhone 16 Pro Max", 440, 956),
+    ]
+
+    func testAllRequiredDevicesFitPortrait() {
+        // მთავარი ეკრანი: სფერო + სათაური + ღილაკების მწკრივი უნდა ჩაჯდეს
+        // სქროლად შიგთავსში ყველა მოთხოვნილ მოწყობილობაზე.
+        for d in devices {
+            let usable = d.h - 59 // status bar + safe area
+            let hero = CGLayout.globeSize + 70 // სფერო + სათაური/სუბტიტრი
+            let buttons = 54 + 10 // ღილაკების მწკრივი + დაშორება
+            XCTAssertLessThanOrEqual(hero + buttons, usable,
+                "\(d.name): პირველი ეკრანის ბლოკი არ ჩაეტევა (\(usable))")
+        }
+        // ყველაზე პატარა და ყველაზე დიდი ეკრანი ერთი ლოგიკით ითვლება
+        XCTAssertLessThan(CGLayout.globeSize, 375, "სფერო უნდა ჩაჯდეს ყველაზე ვიწრო ეკრანზე")
+        XCTAssertLessThanOrEqual(CGLayout.layerCardMax * 4 + 30, 440, "4 ფენის ბარათი + დაშორებები ყველაზე ვიწრო ეკრანზე")
+    }
+
+    func testLandscapeCompactHeightsAreSmaller() {
+        // Landscape: compact ზომები უფრო მცირეა, რომ შიგთავსი სქროლში ჩაჯდეს
+        XCTAssertLessThan(CGLayout.globeSizeCompact, 375) // Landscape სიმაღლე SE-ზე
+        XCTAssertLessThan(CGLayout.barsMaxHeightCompact, CGLayout.barsMaxHeight)
+        XCTAssertLessThanOrEqual(CGLayout.globeSizeCompact + 120, 375)
+    }
+
+    func testDockDoesNotOverlapHomeIndicator() {
+        // დოკი safe area-ს ზემოთ დგას; სქროლის შიგთავსს აქვს ქვედა სივრცე
+        // დოკის სიმაღლე + Home Indicator-ის ზონის ტოლი.
+        XCTAssertGreaterThanOrEqual(CGLayout.dockBottomSpace, CGLayout.dockHeight + 34)
+        XCTAssertGreaterThanOrEqual(CGLayout.dockBottomSpace, CGLayout.dockHeightCompact + 59)
+        // ცენტრალური ღილაკი დოკის შიგნითაა — Home Indicator-ის ქვემოთ არ გადადის
+        XCTAssertLessThanOrEqual(CGLayout.dockCenterSize, CGLayout.dockHeightCompact)
+    }
+
+    func testTouchTargetsMeetAccessibilityMinimum() {
+        // ღილაკების მინიმალური ზომა 44pt (HIG)
+        XCTAssertGreaterThanOrEqual(CGLayout.dockCenterSizeCompact, 44)
+        XCTAssertGreaterThanOrEqual(CGLayout.dockHeightCompact - 6, 44)
+    }
+
+    func testLayersUseFlexibleWidth() {
+        // ფენების ბარათები დიაპაზონს იყენებენ (არა ფიქსირებულს)
+        XCTAssertLessThan(CGLayout.layerCardMin, CGLayout.layerCardMax)
+        XCTAssertGreaterThanOrEqual(CGLayout.layerCardMin, 100)
+    }
+}

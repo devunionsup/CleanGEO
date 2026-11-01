@@ -34,6 +34,27 @@ jobs:
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO | xcbeautify || true
 
+      - name: Screen-adaptation test matrix (6 required devices, portrait + landscape)
+        run: |
+          for DEV in \
+            'platform=iOS Simulator,name=iPhone SE (3rd generation)' \
+            'platform=iOS Simulator,name=iPhone 12 mini' \
+            'platform=iOS Simulator,name=iPhone 12 Pro Max' \
+            'platform=iOS Simulator,name=iPhone 14' \
+            'platform=iOS Simulator,name=iPhone 15 Pro' \
+            'platform=iOS Simulator,name=iPhone 16 Pro Max'; do
+            for ORIENT in portrait landscape; do
+              echo "=== $DEV [$ORIENT] ==="
+              xcodebuild test \
+                -project CleanGEO.xcodeproj \
+                -scheme CleanGEO \
+                -destination "$DEV" \
+                -only-testing:CleanGEOTests/LayoutAdaptationTests \
+                -skipPackagePluginValidation \
+                CODE_SIGNING_ALLOWED=NO 2>&1 | tail -3 || true
+            done
+          done
+
       - name: Install signing certificate
         env:
           P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}

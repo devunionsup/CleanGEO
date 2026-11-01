@@ -31,13 +31,6 @@ jobs:
           echo "--- app exists?"; ls -la "$APP" || true
           echo "--- main Info.plist"; plutil -p "$APP/Info.plist" 2>/dev/null | head -40 || echo "NO PLIST"
           echo "--- appex Info.plists"; for f in "$APP"/PlugIns/*.appex/Info.plist; do echo "== $f"; plutil -p "$f" 2>/dev/null | head -20; done || true
-      - name: Boot simulator + manual install probe
-        run: |
-          xcrun simctl boot "$SIM_UDID" || true
-          xcrun simctl bootstatus "$SIM_UDID" -b
-          APP="DerivedData-cleangeo/Build/Products/Debug-iphonesimulator/CleanGEO.app"
-          xcrun simctl install "$SIM_UDID" "$APP" && echo "MANUAL INSTALL OK" || echo "MANUAL INSTALL FAILED rc=$?"
-          xcrun simctl launch "$SIM_UDID" DEV.GIORGI.DEV || true
       - name: Unit tests
         run: |
           set -o pipefail

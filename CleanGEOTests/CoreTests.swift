@@ -1,5 +1,4 @@
 import XCTest
-@testable import CleanGEO
 
 final class CoreTests: XCTestCase {
     func testCompilerBlockAndException() throws {

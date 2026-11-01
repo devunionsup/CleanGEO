@@ -77,8 +77,19 @@ public final class TunnelManager: ObservableObject {
 
     /// Build (once) and start the local filtering tunnel. iOS shows the
     /// system "VPN" permission prompt the first time.
+    /// თუ ძველი პროფილი „Update Required"-ია (აპი გადაყენებულია), ვშლით და
+    /// ნულიდან ვქმნით — ავტო-აღდგენა.
     public func enable(dnsServers: [String] = ["10.111.222.1"],
                        dohChainOverride: [String]? = nil) async throws {
+        do {
+            try await enableInternal(dnsServers: dnsServers, dohChainOverride: dohChainOverride)
+        } catch {
+            await removeFromDevice()
+            try await enableInternal(dnsServers: dnsServers, dohChainOverride: dohChainOverride)
+        }
+    }
+
+    private func enableInternal(dnsServers: [String], dohChainOverride: [String]?) async throws {
         let proto = NETunnelProviderProtocol()
         proto.providerBundleIdentifier = Self.tunnelBundleID
         // Local privacy tunnel: the label shown in iOS Settings.
@@ -112,10 +123,14 @@ public final class TunnelManager: ObservableObject {
         reloadStatus()
     }
 
-    /// Full removal of the VPN profile from the system.
+    /// Full removal of EVERY VPN profile this app created (წმენდს დუბლიკატებსაც).
     public func removeFromDevice() async {
-        guard let mgr = manager else { return }
-        try? await mgr.removeFromPreferences()
+        let all: [NETunnelProviderManager] = await withCheckedContinuation { cont in
+            NETunnelProviderManager.loadAllFromPreferences { managers, _ in
+                cont.resume(returning: (managers as? [NETunnelProviderManager]) ?? [])
+            }
+        }
+        for m in all { try? await m.removeFromPreferences() }
         manager = nil
         status = .invalid
     }

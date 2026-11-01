@@ -27,6 +27,7 @@
 		AB0301 /* CleanGEOTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130101 /* CleanGEOTests.swift */; };
 		AB0401 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140101 /* PacketTunnelProvider.swift */; };
 		AB0404 /* CleanGEOVPN.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 900104 /* CleanGEOVPN.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AB0202 /* BlockerExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 900102 /* BlockerExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -36,6 +37,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				AB0202 /* BlockerExtension.appex in Embed Foundation Extensions */,
 				AB0404 /* CleanGEOVPN.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";

@@ -24,7 +24,56 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
 
     // MARK: - State
 
-    private var blocklist: BlockListChecker?
+    /// ბლოკლისტის მინიმალისტური წარმოდგენა — VPN target სხვა კლასებზე
+    /// დამოკიდებულებს არ შეიცავს (ის აპის target-შია).
+    private struct TunneledRule: Decodable {
+        struct Trigger: Decodable { var urlFilter: String? }
+        struct Action: Decodable { var type: String? }
+        var trigger: Trigger?
+        var action: Action?
+    }
+
+    private final class LocalBlocklist {
+        private var blocked: Set<String> = []
+        private var allowed: Set<String> = []
+        private let lock = NSLock()
+
+        func load() {
+            guard let container = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.87486bbbb00f533a.3") else { return }
+            let url = container.appendingPathComponent("Filters", isDirectory: true)
+                .appendingPathComponent("cleangeo-blocker.json")
+            guard let data = try? Data(contentsOf: url),
+                  let rules = try? JSONDecoder().decode([TunneledRule].self, from: data) else { return }
+            var b: Set<String> = []
+            var a: Set<String> = []
+            for r in rules {
+                guard let f = r.trigger?.urlFilter else { continue }
+                let isException = r.action?.type == "ignore-previous-rules"
+                let s = f
+                    .replacingOccurrences(of: "^[a-z-]+://([a-z0-9-]+\\.)*", with: "", options: .regularExpression)
+                    .replacingOccurrences(of: "([/:?#]|$)", with: "", options: .regularExpression)
+                    .replacingOccurrences(of: "^", with: "")
+                    .replacingOccurrences(of: "$", with: "")
+                guard s.contains("."), s.count >= 4 else { continue }
+                if isException { a.insert(s.lowercased()) } else { b.insert(s.lowercased()) }
+            }
+            lock.lock()
+            blocked = b
+            allowed = a
+            lock.unlock()
+        }
+
+        func isBlocked(_ host: String) -> Bool {
+            let h = host.lowercased()
+            lock.lock(); defer { lock.unlock() }
+            for x in allowed where h == x || h.hasSuffix("." + x) { return false }
+            for x in blocked where h == x || h.hasSuffix("." + x) { return true }
+            return false
+        }
+    }
+
+    private var blocklist: LocalBlocklist?
     private var dohEndpoints: [(host: String, url: URL)] = []
     private var activeEndpointIndex = 0
     private var dnsSession: URLSession?
@@ -35,8 +84,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     override func startTunnel(options: [String: NSObject]?,
                               completionHandler: @escaping (Error?) -> Void) {
         // 1) Blocklist from the App Group (same compiled list Safari uses).
-        let checker = BlockListChecker()
-        checker.loadFromAppGroup()
+        let checker = LocalBlocklist()
+        checker.load()
         blocklist = checker
 
         // 2) providerConfiguration written by the app.
@@ -78,7 +127,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let ipv4 = NEIPv4Settings(addresses: [dnsAddr], subnetMasks: ["255.255.255.255"])
         ipv4.includedRoutes = [NEIPv4Route(destinationAddress: dnsAddr,
                                            subnetMask: "255.255.255.255")]
-        settings.IPv4 = ipv4
+        settings.ipv4Settings = ipv4
 
         // No IPv6 route is claimed: IPv6 DNS is handled by iOS preferring the
         // tunnel's DNS resolver (matchDomains "" below).
@@ -195,8 +244,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         req.setValue("application/dns-message", forHTTPHeaderField: "Accept")
         req.httpBody = query
 
-        session.dataTask(with: req) { [weak self] data, response, error in
-            guard let self else { completion(nil); return }
+        session.dataTask(with: req) { data, response, error in
             if let error {
                 NSLog("[CleanGEOVPN] DoH %@ შეცდომა: %@", ep.host, error.localizedDescription)
                 completion(nil)
@@ -242,7 +290,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         pkt.append(UInt8(udpLen & 0xFF))
         pkt.append(contentsOf: [0x00, 0x00])
         pkt.append(dnsData)
-        packetFlow.writePackets([pkt], withVersions: [4])
+        packetFlow.writePackets([pkt], withProtocols: [NSNumber(value: 2)]) // 2 = AF_INET
     }
 
     // MARK: - Helpers

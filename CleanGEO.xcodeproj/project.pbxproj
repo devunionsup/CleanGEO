@@ -26,8 +26,6 @@
 		AB0201 /* BlockerRequestHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120101 /* BlockerRequestHandler.swift */; };
 		AB0301 /* CleanGEOTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130101 /* CleanGEOTests.swift */; };
 		AB0401 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 140101 /* PacketTunnelProvider.swift */; };
-		AB0402 /* BlockListChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110107 /* BlockListChecker.swift */; };
-		AB0403 /* FilterCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110101 /* FilterCompiler.swift */; };
 		AB0404 /* CleanGEOVPN.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 900104 /* CleanGEOVPN.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -322,8 +320,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB0401 /* PacketTunnelProvider.swift in Sources */,
-				AB0402 /* BlockListChecker.swift in Sources */,
-				AB0403 /* FilterCompiler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

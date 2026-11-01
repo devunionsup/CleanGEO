@@ -13,11 +13,11 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: CleanGEO
+      - path: CleanGEO/CleanGEO
         excludes: ["Web/**", "Resources/**"]
-      - path: CleanGEO/Web
+      - path: CleanGEO/CleanGEO/Web
         type: folder
-      - path: CleanGEO/Resources
+      - path: CleanGEO/CleanGEO/Resources
         type: folder
       - Shared
     settings:
@@ -52,7 +52,7 @@ targets:
     sources:
       - BlockerExtension
       - path: Shared/AppGroup.swift
-      - path: CleanGEO/FilterCompiler.swift
+      - path: CleanGEO/CleanGEO/FilterCompiler.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.BlockerExtension
@@ -75,12 +75,11 @@ targets:
     sources:
       - CleanGEOVPN
       - Shared
-      - path: CleanGEO/DNSWire.swift
-      - path: CleanGEO/DoHClient.swift
-      - path: CleanGEO/DNSSECValidator.swift
-      - path: CleanGEO/RecursiveResolver.swift
-      - path: CleanGEO/FilterCompiler.swift
-      - path: CleanGEO/BlockListChecker.swift
+      - path: CleanGEO/CleanGEO/DNSWire.swift
+      - path: CleanGEO/CleanGEO/DoHClient.swift
+      - path: CleanGEO/CleanGEO/DNSSECValidator.swift
+      - path: CleanGEO/CleanGEO/RecursiveResolver.swift
+      - path: CleanGEO/CleanGEO/FilterCompiler.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.VPN

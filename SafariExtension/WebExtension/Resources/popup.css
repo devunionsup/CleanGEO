@@ -1,0 +1,4 @@
+body { font-family: -apple-system, system-ui, sans-serif; width: 260px; margin: 0; padding: 14px; background: #111; color: #eee; }
+h1 { font-size: 18px; margin: 0 0 12px; }
+.row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.count { font-size: 14px; color: #bbb; }

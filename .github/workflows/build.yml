@@ -13,13 +13,19 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Pick iOS simulator (by UDID — robust to runner image changes)
+        run: |
+          xcrun simctl list devices available
+          UDID=$(xcrun simctl list devices available | grep -m1 -E '\(([0-9A-Fa-f-]{36})\)' | grep -Eo '[0-9A-Fa-f-]{36}')
+          if [ -z "$UDID" ]; then echo "No simulator available"; exit 1; fi
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
       - name: Generate project
         run: xcodegen generate
       - name: Unit tests
         run: |
           set -o pipefail
           xcodebuild test -project CleanGEO.xcodeproj -scheme CleanGEO \
-            -destination 'platform=iOS Simulator,name=iPhone SE (3rd generation)' \
+            -destination "id=$SIM_UDID" \
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO | tail -n 60
       - name: Archive (unsigned, both extensions must be embedded)

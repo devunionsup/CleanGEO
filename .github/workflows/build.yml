@@ -158,16 +158,17 @@ jobs:
           fi
           codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
           codesign -vv "$APP"
-          cd build
           if [ "$FULL" = "1" ]; then
-            zip -qry CleanGEO-signed.ipa Payload
+            cd build && zip -qry CleanGEO-signed.ipa Payload
           else
+            # აპი მარტო (გაფართოებების პროფილების გარეშე): PlugIns-ის მოშორების
+            # შემდეგ ბეჭედი ირღვევა — ხელახალი ხელმოწერა სავალდებულოა.
             rm -rf "$APP/PlugIns"
             codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
             codesign -vv "$APP"
-            zip -qry CleanGEO-signed-adhoc.ipa Payload
+            cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload
           fi
-          rm -rf Payload
+          rm -rf build/Payload 2>/dev/null || true
           ls -la *.ipa
 
       - name: Verify signing (informational)

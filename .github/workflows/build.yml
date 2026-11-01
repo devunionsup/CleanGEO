@@ -139,6 +139,9 @@ jobs:
         env:
           P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}
         if: env.P12_CERT_B64 != '' && runner.os == 'macOS'
+        # პროფაილი ერთი App-ID-ია და ორ გაფართოებას არ ფარავს; ხელმოწერა
+        # ინფორმაციულია — მთავარი არტეფაქტი unsigned IPA-ა.
+        continue-on-error: true
         run: |
           APP=build/Payload_tmp/CleanGEO.app
           mkdir -p build/Payload_tmp

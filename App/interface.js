@@ -38,7 +38,9 @@ function post(name,payload={},cb){const id="r"+(++seq);pend.set(id,cb||(()=>{}))
   try{window.webkit.messageHandlers.interface.postMessage({id,name,payload});}
   catch(e){/* WebView-გარე ხედი */ pend.delete(id);}}
 window.__reply=(id,ok,data)=>{const cb=pend.get(id);pend.delete(id);cb&&cb(ok,data);};
-window.__state=s=>{Object.assign(S.vpn,s.vpn||{});Object.assign(S.safari,s.safari||{});Object.assign(S.stats,s.stats||{});Object.assign(S.dns,s.dns||{});Object.assign(S.schedule,s.schedule||{});Object.assign(S.settings,s.settings||{});
+let lastStateSig="";
+window.__state=s=>{const sig=JSON.stringify(s);if(sig===lastStateSig)return;lastStateSig=sig;
+  Object.assign(S.vpn,s.vpn||{});Object.assign(S.safari,s.safari||{});Object.assign(S.stats,s.stats||{});Object.assign(S.dns,s.dns||{});Object.assign(S.schedule,s.schedule||{});Object.assign(S.settings,s.settings||{});
   if(s.filters)S.filters=s.filters;if(s.activity)S.activity=s.activity;refresh();};
 window.__toast=m=>toast(m);
 
@@ -76,8 +78,6 @@ const ACTIONS={
   notif(){S.settings.notifications=!S.settings.notifications;render();post("setSetting",{key:"notifications",value:S.settings.notifications});},
   howto(){sheetHowto();},
   log(){sheetLog();},
-  nodePick(){sheetNodes();},
-  nodeUse(id){S.vpn.node=id;render();post("setNode",{id:id});closeSheet();toast("სერვერი არჩეულია");},
   fdel(id){post("removeFilter",{id:id},()=>{});S.filters=S.filters.filter(f=>f.id!==id);closeSheet();render();},
   faddOpen(){sheet(`<h3 style="margin-top:0">ფილტრის დამატება</h3>
   <div class="pd" style="padding:0 0 12px"><div class="lb" style="margin-bottom:6px">URL</div>
@@ -137,7 +137,7 @@ function pgHome(st,on){const s=S.stats;const max=Math.max(1,...s.week);
       <span class="bg ${S.safari.enabled?"ok":"off"}">${S.safari.enabled?"ჩართული":"გამორთული"}</span>${ic("chev","")}</div>
     <div class="row" data-go="tab:dns"><span class="ic ${S.dns.ok===false?"r":"g"}">${ic(S.dns.ok===false?"warn":"compass")}</span><span class="rt"><b>DNS რეზოლვერი</b><small>${esc(S.dns.doh||"მისამართი მითითებული არაა")}</small></span>
       <span class="bg ${S.dns.ok===false?"bd":(S.dns.ok?"ok":"off")}">${S.dns.ok===false?"ვერ პასუხობს":S.dns.ok?"მუშაობს":"—"}</span>${ic("chev","")}</div>
-    <div class="row" data-go="tab:vpn"><span class="ic ${on?"g":""}">${ic("globe")}</span><span class="rt"><b>VPN ტუნელი</b><small>${esc(S.vpn.node?S.vpn.node.name:"სერვერი არჩეული არაა")}</small></span>
+    <div class="row" data-go="tab:vpn"><span class="ic ${on?"g":""}">${ic("globe")}</span><span class="rt"><b>ლოკალური VPN</b><small>${on?"გარეთ მხოლოდ დაშიფრული DNS გადის":"დაშიფვრა მოწყობილობაში + DoH ჯაჭვი"}</small></span>
       <span class="bg ${on?"ok":"off"}">${st}</span>${ic("chev","")}</div>
   </div>
   <h3>აქტივობა</h3>
@@ -155,7 +155,7 @@ function pgVPN(st,on){const up=S.vpn.bytesUp,dn=S.vpn.bytesDown;
   <div class="nb"><button class="bk" data-go="tab:home">${ic("back")}</button><h1>VPN ტუნელი</h1></div>
   <div class="gw"><button class="gl" data-a="togglePower"><span class="w" style="top:${on?"15%":"110%"}"></span><span class="w" style="top:${on?"45%":"140%"}"></span>
     <div>${ic("globe")}<b>${up+dn>0?fmtBytes(up+dn):"VPN"}</b><small>${on?"ტუნელი აქტიურია":"გამორთულია"}</small></div></button></div>
-  <div class="st">${st}</div><p>${on?("უკავშირდება "+esc(S.vpn.node?S.vpn.node.name:"")):"დააჭირე ღილაკს დასაკავშირებლად"}</p>
+  <div class="st">${st}</div><p>${on?"ლოკალური ტუნელი — ტრაფიკი იშიფრება ტელეფონზე, გარეთ გადის მხოლოდ დაშიფრული DNS":"დააჭირე ღილაკს დასაკავშირებლად"}</p>
   ${S.vpn.lastError?`<div class="dm">${ic("warn")}<span>${esc(S.vpn.lastError)}</span></div>`:""}
   <div class="cd"><div class="pd">
     <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>ტრაფიკი</b><span class="lb">${fmtBytes(dn)} ↓ / ${fmtBytes(up)} ↑</span></div>
@@ -163,9 +163,9 @@ function pgVPN(st,on){const up=S.vpn.bytesUp,dn=S.vpn.bytesDown;
     <div class="lb" style="display:flex;gap:14px;margin-top:6px"><span><span class="dt" style="background:var(--ac);display:inline-block"></span> ჩამოტვირთვა</span><span><span class="dt" style="background:var(--a2);display:inline-block"></span> ატვირთვა</span></div>
   </div></div>
   <div class="cd">
-    <div class="row" data-a="nodePick"><span class="ic">${ic("srv")}</span><span class="rt"><b>სერვერი</b><small>${esc(S.vpn.node?S.vpn.node.name+" — "+S.vpn.node.flag:"აირჩიე")}</small></span><span class="r2">${ic("chev")}</span></div>
+    <div class="row"><span class="ic">${ic("srv")}</span><span class="rt"><b>ლოკალური ტუნელი</b><small>სერვერზე კავშირი არ დგინდება — ყველაფერი ტელეფონზე ხდება</small></span></div>
     <div class="row"><span class="ic">${ic("clock")}</span><span class="rt"><b>კავშირის ხანგრძლივობა</b><small>${fmtSince(S.vpn.connectedSince)}</small></span></div>
-    <div class="row"><span class="ic">${ic("lock")}</span><span class="rt"><b>დაშიფვრა</b><small>${S.vpn.dnsOnly?"DNS-over-TLS ტუნელში":"ChaCha20-Poly1305"}</small></span><span class="bg ok">${S.vpn.dnsOnly?"DNS":"AES/ChaCha"}</span></div>
+    <div class="row"><span class="ic">${ic("lock")}</span><span class="rt"><b>დაშიფვრა</b><small>${S.vpn.dnsOnly?"DNS გადის მხოლოდ დაშიფრულ DoH-ზე":"მთელი ტრაფიკი იშიფრება მოწყობილობაში"}</small></span><span class="bg ok">${S.vpn.dnsOnly?"DoH":"ლოკალური"}</span></div>
   </div>
   <div class="pd" style="padding:0 2px"><button class="btn ${on?"d":""}" data-a="togglePower">${on?"გათიშვა":"დაკავშირება"}</button></div>
   </div>`;}
@@ -192,15 +192,20 @@ function pgDNS(){const d=S.dns;
   </div></div>
   <div class="cd"><div class="pd">
     <div class="lb" style="margin-bottom:6px">DoH მისამართი (DNS-over-HTTPS)</div>
-    <input id="doh" value="${esc(d.doh)}" placeholder="https://dns.cleangeo.ge/dns-query" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="doh" value="${esc(d.doh)}" placeholder="https://dns.adguard-dns.com/dns-query" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="lb" style="margin:12px 0 6px">DoT მისამართი (DNS-over-TLS)</div>
-    <input id="dot" value="${esc(d.dot||"")}" placeholder="dns.cleangeo.ge" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <input id="dot" value="${esc(d.dot||"")}" placeholder="dns.adguard-dns.com" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="ar" style="margin-top:14px"><button class="btn" data-a="dnsSave">შენახვა</button></div>
   </div></div>
   <div class="cd"><div class="row"><span class="ic">${ic("lock")}</span><span class="rt"><b>DNSSEC ვალიდაცია</b><small>ხელმოწერების შემოწმება ყველა პასუხზე</small></span>
     <button class="tg ${d.dnssec?"on":""}" data-a="dnssec"></button></div>
     <div class="row"><span class="ic">${ic("eye")}</span><span class="rt"><b>პროვაიდერის ჩარევა</b><small>DNS-ჰაიჯეკის ავტო-შემოწმება</small></span><span class="bg ${S.vpn.status==="connected"?"ok":"off"}">${S.vpn.status==="connected"?"ტუნელით დაცული":"—"}</span></div></div>
-  <div class="pd" style="padding:0 2px;color:var(--t2);font-size:12.5px;text-align:center">Google-ის, Cloudflare-ის და AdGuard-ის DNS არ გამოიყენება.</div>
+  <h3>DoH ჯაჭვი (ავტომატური fallback)</h3>
+  <div class="cd">${(S.vpn.dohChain||[]).map((u,i)=>`<div class="row"><span class="ic ${S.vpn.activeDoh===u?"g":(i===0?"":"r")}">${ic(S.vpn.activeDoh===u?"check":(i===0?"compass":"clock"))}</span>
+    <span class="rt"><b>${i===0?"პირველადი":"სარეზერვო"}</b><small>${esc(String(u).replace("https://",""))}</small></span>
+    ${S.vpn.activeDoh===u?'<span class="bg ok">აქტიური</span>':(i===0?'<span class="bg off">პირველი რიგით</span>':'<span class="bg off">სარეზერვო</span>')}</div>`).join("")}
+    <div class="row"><span class="ic ${S.dns.ok===false?"r":"g"}">${ic(S.dns.ok===false?"warn":"shield")}</span><span class="rt"><b>სტატუსი</b><small>${S.dns.ok===false?"კავშირი ვერ დამყარდა — გადადის სარეზერვოზე":S.dns.ok?"მუშაობს":"ჯერ არ შემოწმებულა"}</small></span></div></div>
+  <div class="pd" style="padding:0 2px;color:var(--t2);font-size:12.5px;text-align:center">DNS გადის მხოლოდ დაშიფრულად: თუ პირველადი მიუწვდომელია, აპი თავისით გადადის სარეზერვოზე.</div>
   </div>`;}
 function pgStats(){const s=S.stats;
   return `<div class="pg">
@@ -260,15 +265,6 @@ function openFilter(id){const f=S.filters.find(x=>x.id===id);if(!f)return;
 function sheetLog(){sheet(`<h3 style="margin-top:0">აქტივობის ჟურნალი</h3>
   <div class="tl">${S.activity.length?S.activity.slice(0,20).map(a=>`<div class="it"><div class="cd"><div class="row"><span class="ic ${a.kind==="blocked"?"r":"g"}">${ic(a.kind==="blocked"?"ban":"check")}</span><span class="rt"><b>${esc(a.title)}</b><small>${fmtTime(a.at)}</small></span></div></div></div>`).join(""):'<div class="em">ცარიელია</div>'}</div>
   <button class="btn" data-a="cs">დახურვა</button>`);}
-function sheetNodes(){const nodes=S.vpn.nodes||[
-    {id:"tbilisi",name:"თბილისი",flag:"🇬🇪",ping:12,load:32},
-    {id:"fra",name:"ფრანკფურტი",flag:"🇩🇪",ping:48,load:51},
-    {id:"ams",name:"ამსტერდამი",flag:"🇳🇱",ping:57,load:44}];
-  sheet(`<h3 style="margin-top:0">სერვერის არჩევა</h3>
-  <div class="cd">${nodes.map(n=>`<div class="row" data-a="nodeUse:${n.id}"><span class="ic ${S.vpn.node&&S.vpn.node.id===n.id?"g":""}">${ic("srv")}</span>
-    <span class="rt"><b>${n.flag} ${esc(n.name)}</b><small>პინგი ${n.ping} მწმ · დატვირთვა ${n.load}%</small></span>
-    ${S.vpn.node&&S.vpn.node.id===n.id?'<span class="sel on">'+ic("check")+"</span>":'<span class="sel"></span>'}</div>`).join("")}</div>
-  <button class="btn" data-a="cs">გაუქმება</button>`);}
 
 /* ---------- თემა ---------- */
 function applyTheme(){const t=S.settings.dark;

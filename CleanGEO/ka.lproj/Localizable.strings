@@ -19,7 +19,7 @@
 "status.off" = "გამორთულია";
 
 "home.dns.title" = "CleanGEO DNS";
-"home.dns.desc" = "საკუთარი რეკურსიული რეზოლვერი DNSSEC-ით, DoH და DoT შიფრაციით. Google-ის, Cloudflare-ის ან AdGuard-ის DNS არ გამოიყენება.";
+"home.dns.desc" = "დაშიფრული DNS (DoH) ავტომატური fallback-ით: პირველადი — dns.adguard-dns.com, სარეზერვო — family.adguard-dns.com.";
 "home.dns.settings" = "DNS-ის პარამეტრები";
 
 "home.isp.title" = "ინტერნეტ-პროვაიდერის ჩარევა";
@@ -46,8 +46,8 @@
 "schedule.footer" = "iOS არ იძლევა ზუსტი ფონური გაშვების გარანტიას — აპლიკაცია ასევე ამოწმებს განრიგს გახსნისას.";
 
 "dns.tunnel" = "ტუნელი";
-"dns.vpn" = "CleanGEO VPN";
-"dns.vpn.hint" = "ტუნელი იყენებს NetworkExtension-ს; პირველი ჩართვისას iOS ითხოვს ნებართვას.";
+"dns.vpn" = "ლოკალური VPN";
+"dns.vpn.hint" = "ტუნელი ლოკალურია: ტრაფიკი იშიფრება მოწყობილობაში და გარეთ გადის მხოლოდ დაშიფრული DNS (DoH).";
 "dns.doh" = "DoH მისამართი";
 "dns.dot" = "DoT მისამართი";
 "dns.tls" = "TLS";

@@ -24,6 +24,9 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     private let tunnel = TunnelManager.shared
     private let isp = ISPBlockDetector.shared
     private var statusTimer: Timer?
+    /// ბოლო გაგზავნილი state-ის თითი: უცვლელი state არ იგზავნება — ეს იცავს
+    /// ინტერფეისს ყოველწამიანი ციმციმებისგან.
+    private var lastPushSignature: String = ""
 
     // MARK: - შექმნა
 
@@ -44,19 +47,36 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     func attach(to webView: WKWebView) {
         self.webView = webView
         webView.configuration.userContentController.add(self, name: Self.scriptHandlerName)
+        webView.navigationDelegate = self
         let url = Bundle.main.url(forResource: "Interface", withExtension: "html")
         if let url {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         }
-        statusTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        // ციმციმების ფიქსი: ტაიმერი მხოლოდ სინქრონიზაციისთვისაა (5 წმ);
+        // push ხდება მხოლოდ მაშინ, როცა state ფაქტობრივად შეიცვლება.
+        statusTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.pushState() }
         }
         applyTheme()
         pushState()
+        probeDNSInBackground()
     }
 
     deinit {
         statusTimer?.invalidate()
+    }
+
+    // MARK: - WKNavigationDelegate
+
+    /// გვერდის ყოველი ჩატვირთვისას state ხელახლა იგზავნება — წინა სიგნატურა
+    /// აღარ ბლოკავს სინქრონს (გვერდი ახალია, მისი JS-state ცარიელია).
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        lastPushSignature = ""
+        pushState()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        lastPushSignature = ""
     }
 
     // MARK: - მდგომარეობის push
@@ -81,6 +101,10 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
                     "power": self.tunnel.status == .connected,
                     "status": Self.statusKey(self.tunnel.status),
                     "statusText": self.tunnel.statusText,
+                    "local": true,
+                    "mode": InterfaceSettings.dnsOnly ? "dns" : "tunnel",
+                    "dohChain": TunnelManager.dohChain,
+                    "activeDoh": self.tunnel.activeEndpoint as Any,
                     "lastError": self.tunnel.lastError ?? s.lastError
                 ],
                 "safari": [
@@ -122,6 +146,8 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
     private func evalPush(_ state: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: state),
               let json = String(data: data, encoding: .utf8) else { return }
+        if json == lastPushSignature { return }
+        lastPushSignature = json
         webView?.evaluateJavaScript("window.__state(\(json)); void 0") { _, _ in }
     }
 
@@ -179,9 +205,9 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
                 await tunnel.disable()
             } else {
                 do {
-                    try await tunnel.enable(
-                        nodeAddress: InterfaceConstants.nodeEndpoint,
-                        nodePublicKeyBase64: InterfaceConstants.nodePublicKey)
+                    // ლოკალური ტუნელი: დაშიფვრა მოწყობილობაში, გარეთ მხოლოდ DoH.
+                    try await tunnel.enable(dohChainOverride: Self.dohChain())
+                    probeDNSInBackground()
                 } catch {
                     throw BridgeError(message: error.localizedDescription)
                 }
@@ -190,16 +216,8 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
             return nil
 
         case "setMode":
-            // „მხოლოდ DNS“ და „სრული ტუნელი“ განსხვავდება AllowedIPs-ით.
-            let dnsOnly = (payload["mode"] as? String) == "dns"
-            InterfaceSettings.dnsOnly = dnsOnly
-            if tunnel.status == .connected || tunnel.status == .connecting {
-                try? await tunnel.disable()
-                _ = try? await tunnel.enable(
-                    nodeAddress: InterfaceConstants.nodeEndpoint,
-                    nodePublicKeyBase64: InterfaceConstants.nodePublicKey,
-                    allowedIPs: dnsOnly ? ["10.111.222.1/32"] : ["0.0.0.0/0", "::/0"])
-            }
+            // ტუნელი ყოველთვის ლოკალურია; რეჟიმი მხოლოდ წარწერაა.
+            InterfaceSettings.dnsOnly = (payload["mode"] as? String) == "dns"
             pushState()
             return nil
 
@@ -268,15 +286,20 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
             }
             InterfaceSettings.doh = doh
             InterfaceSettings.dot = dot
+            // აქტიური ტუნელი ხელახლა ირთვება განახლებული ჯაჭვით.
+            if tunnel.status == .connected || tunnel.status == .connecting {
+                try? await tunnel.disable()
+                _ = try? await tunnel.enable(dohChainOverride: Self.dohChain())
+            }
+            probeDNSInBackground()
             pushState()
             return nil
 
         case "testDNS":
+            // ჯაჭვი თავისით გადადის fallback-ზე; შედეგს DNSHealth ინახავს.
             let latency = try await DNSHealth.test(
                 doh: InterfaceSettings.doh, dot: InterfaceSettings.dot,
                 dnssec: InterfaceSettings.dnssec)
-            InterfaceSettings.setDnsOK(true)
-            InterfaceSettings.setDnsLatency(latency)
             pushState()
             return ["latency": latency]
 
@@ -321,11 +344,6 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
 
 struct BridgeError: Error { let message: String }
 
-enum InterfaceConstants {
-    static let nodeEndpoint = "tunnel.cleangeo.ge:51820"
-    static let nodePublicKey = ""
-}
-
 @MainActor
 enum ThemeBridge {
     static var rawValue: String {
@@ -348,6 +366,17 @@ enum InterfaceSettings {
     static var dnsLastLatency: Any { d.object(forKey: "cg.dnsLastLatency") as? Int ?? NSNull() as Any }
     static func setDnsOK(_ v: Bool) { d.set(v, forKey: "cg.dnsLastOK") }
     static func setDnsLatency(_ v: Int) { d.set(v, forKey: "cg.dnsLastLatency") }
+    /// DoH ჯაჭვი: პირველი არჩევანი + ავტომატური fallback (AdGuard).
+    static var dnsChain: [String] {
+        get {
+            let saved = d.stringArray(forKey: "cg.dohChain") ?? []
+            let primary = d.string(forKey: "cg.doh") ?? ""
+            var chain = saved
+            if !primary.isEmpty && !chain.contains(primary) { chain.insert(primary, at: 0) }
+            return chain
+        }
+        set { d.set(newValue, forKey: "cg.dohChain") }
+    }
 }
 
 enum InterfaceStore {
@@ -358,15 +387,87 @@ enum InterfaceStore {
 }
 
 enum DNSHealth {
+    /// ჯაჭვის ტესტი: რომელი DoH პასუხობს და რა სისწრაფით.
     static func test(doh: String, dot: String, dnssec: Bool) async throws -> Int {
-        let host = doh.isEmpty ? "example" : URL(string: doh)?.host ?? ""
-        guard !host.isEmpty else { throw BridgeError(message: "DoH მისამართი მითითებული არაა") }
-        let start = Date()
-        if !doh.isEmpty {
-            let client = DoHClient(config: CleanGEODNSConfig(dohURL: URL(string: doh)!,
+        let chain = InterfaceBridge.dohChain()
+        guard !chain.isEmpty else { throw BridgeError(message: "DoH მისამართი მითითებული არაა") }
+        var latency = -1
+        for raw in chain {
+            guard let url = URL(string: raw), let host = url.host, !host.isEmpty else { continue }
+            let start = Date()
+            let client = DoHClient(config: CleanGEODNSConfig(dohURL: url,
                                                              doTHost: dot.isEmpty ? host : dot))
-            _ = try await client.query("cleangeo.ge", type: .a, dnssec: dnssec)
+            do {
+                _ = try await client.query("example.com", type: .a, dnssec: dnssec)
+                let l = Int(Date().timeIntervalSince(start) * 1000)
+                if latency < 0 { latency = l }
+                if raw == InterfaceSettings.doh {
+                    InterfaceSettings.setDnsOK(true)
+                    InterfaceSettings.setDnsLatency(l)
+                }
+                if !InterfaceSettings.dnsChain.contains(raw) {
+                    InterfaceSettings.dnsChain.append(raw)
+                }
+            } catch {
+                if raw == InterfaceSettings.doh {
+                    InterfaceSettings.setDnsOK(false)
+                }
+            }
         }
-        return Int(Date().timeIntervalSince(start) * 1000)
+        guard latency >= 0 else { throw BridgeError(message: "ვერცერთი DoH სერვერი არ პასუხობს") }
+        return latency
+    }
+}
+
+// MARK: - DNS ჯაჭვის ფონური შემოწმება (ავტომატური fallback)
+
+enum DNSProbe {
+    static var running = false
+
+    /// აპი თავისთავად იგებს, პასუხობს თუ არა პირველადი DoH; ტუნელის ჯაჭვი
+    /// თვითონ გადადის fallback-ზე, აქ მხოლოდ სტატუსი ანახლდება.
+    @MainActor
+    static func probe() {
+        guard !running else { return }
+        running = true
+        Task { @MainActor in
+            defer { running = false }
+            for raw in InterfaceBridge.dohChain() {
+                guard let url = URL(string: raw), let host = url.host, !host.isEmpty else { continue }
+                let client = DoHClient(config: CleanGEODNSConfig(dohURL: url, doTHost: host))
+                do {
+                    let start = Date()
+                    _ = try await client.query("example.com", type: .a, dnssec: false)
+                    let l = Int(Date().timeIntervalSince(start) * 1000)
+                    if raw == InterfaceSettings.doh {
+                        InterfaceSettings.setDnsOK(true)
+                        InterfaceSettings.setDnsLatency(l)
+                    }
+                    if !InterfaceSettings.dnsChain.contains(raw) {
+                        InterfaceSettings.dnsChain.append(raw)
+                    }
+                    return
+                } catch {
+                    if raw == InterfaceSettings.doh {
+                        InterfaceSettings.setDnsOK(false)
+                    }
+                }
+            }
+        }
+    }
+}
+
+extension InterfaceBridge {
+    /// ჯაჭვი: მომხმარებლის DoH (თუ მითითებულია) → AdGuard primary → fallback.
+    static func dohChain() -> [String] {
+        var chain = InterfaceSettings.dnsChain
+        for e in [TunnelManager.dohPrimary, TunnelManager.dohFallback] where !chain.contains(e) {
+            chain.append(e)
+        }
+        return chain
+    }
+
+    func probeDNSInBackground() {
+        DNSProbe.probe()
     }
 }

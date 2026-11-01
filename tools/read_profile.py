@@ -29,3 +29,8 @@ if ent:
 
 certs = re.findall(rb"-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----", raw)
 print(f"embedded certs: {len(certs)}")
+
+import plistlib
+pl = plistlib.loads(m.group(0))
+print("== full Entitlements ==")
+print(plistlib.dumps(pl.get("Entitlements", {}), fmt=plistlib.FMT_XML).decode())

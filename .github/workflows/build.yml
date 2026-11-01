@@ -152,16 +152,6 @@ jobs:
           codesign -vv build/Payload_tmp/CleanGEO.app
           cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload_tmp
 
-      - name: Attach IPA to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: CleanGEO build ${{ github.run_number }}
-          prerelease: true
-          files: |
-            build/CleanGEO-unsigned.ipa
-            build/CleanGEO-signed-adhoc.ipa
-
       - name: Verify signing (informational)
         run: |
           codesign -dvv build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app 2>&1 | head -20 || true

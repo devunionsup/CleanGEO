@@ -2,11 +2,17 @@
 //  TunnelManager.swift
 //  CleanGEO
 //
-//  Manages the optional CleanGEO privacy tunnel (NetworkExtension
-//  packet-tunnel-provider). Creates the system VPN configuration on demand;
-//  DNS is pointed at the CleanGEO resolver so the ISP cannot see or rewrite
-//  DNS traffic, and traffic flows through the tunnel ( WireGuard-style
-//  encrypted hop to the user's own CleanGEO node).
+//  Manages the local CleanGEO privacy tunnel (NetworkExtension
+//  packet-tunnel-provider). The tunnel is LOCAL: encryption (ChaCha20-style
+//  sealed boxes) happens entirely on the device. No remote VPN server is
+//  contacted. The only egress the tunnel permits is DNS-over-HTTPS to the
+//  configured AdGuard endpoints:
+//
+//    1. https://dns.adguard-dns.com/dns-query        (primary)
+//    2. https://family.adguard-dns.com/dns-query     (automatic fallback)
+//
+//  If the primary does not answer or returns errors, the tunnel switches to
+//  the fallback on its own and remembers the working endpoint.
 //
 
 import Foundation
@@ -15,7 +21,21 @@ import NetworkExtension
 public final class TunnelManager: ObservableObject {
 
     public static let shared = TunnelManager()
-    static let tunnelBundleID = "app.beet2811.ursamajor1675.tunnel"
+    static let tunnelBundleID = "app.beet2811.ursamajor1675.CleanGEOVPN"
+
+    // MARK: - DoH chain (primary → automatic fallback)
+
+    public static let dohPrimary = "https://dns.adguard-dns.com/dns-query"
+    public static let dohFallback = "https://family.adguard-dns.com/dns-query"
+    public static let doTHostPrimary = "dns.adguard-dns.com"
+    public static let doTHostFallback = "family.adguard-dns.com"
+
+    /// The chain handed to the tunnel process. The provider tries the
+    /// endpoints in order and uses the first one that answers.
+    public static let dohChain = [dohPrimary, dohFallback]
+
+    /// Endpoint the user selected in the UI ("" = automatic).
+    @Published public private(set) var activeEndpoint: String = ""
 
     @Published public private(set) var status: NEVPNStatus = .invalid
     @Published public private(set) var lastError: String?
@@ -55,21 +75,21 @@ public final class TunnelManager: ObservableObject {
 
     // MARK: - Enable
 
-    /// Build (once) and start the tunnel. Requires the NetworkExtension
-    /// entitlement; iOS shows the system "VPN" permission prompt the first
-    /// time, so this must run in the foreground of the app.
-    public func enable(nodeAddress: String,
-                       nodePublicKeyBase64: String,
-                       allowedIPs: [String] = ["0.0.0.0/0", "::/0"],
-                       dnsServers: [String] = ["10.111.222.1"]) async throws {
+    /// Build (once) and start the local filtering tunnel. iOS shows the
+    /// system "VPN" permission prompt the first time.
+    public func enable(dnsServers: [String] = ["10.111.222.1"],
+                       dohChainOverride: [String]? = nil) async throws {
         let proto = NETunnelProviderProtocol()
         proto.providerBundleIdentifier = Self.tunnelBundleID
-        proto.serverAddress = nodeAddress
+        // Local privacy tunnel: the label shown in iOS Settings.
+        proto.serverAddress = "CleanGEO (ლოკალური)"
+        // ჯაჭვი: მომხმარებლის DoH (თუ არის) → AdGuard primary → fallback.
+        let chain = (dohChainOverride?.isEmpty == false) ? dohChainOverride! : Self.dohChain
         // Provider-side configuration, read in the tunnel process.
         proto.providerConfiguration = [
-            "endpoint": nodeAddress,
-            "peerPublicKey": nodePublicKeyBase64,
-            "allowedIPs": allowedIPs.joined(separator: ","),
+            "mode": "local-doh",
+            "dohChain": chain.joined(separator: " "),
+            "dotHosts": [Self.doTHostPrimary, Self.doTHostFallback].joined(separator: " "),
             "dns": dnsServers.joined(separator: ","),
             "mtu": 1_420
         ]

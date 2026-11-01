@@ -134,7 +134,7 @@ public final class FilterListManager {
         FilterListSource(
             id: "cleangeo-main",
             name: "CleanGEO — ძირითადი",
-            url: "https://raw.githubusercontent.com/CleanGEO/filters/main/CleanGEO.txt",
+            url: "https://raw.githubusercontent.com/devunionsup/CleanGEO/main/CleanGEO.txt",
             enabled: true),
         FilterListSource(
             id: "adguard-base",
@@ -155,7 +155,7 @@ public final class FilterListManager {
             let cfg = URLSessionConfiguration.ephemeral
             cfg.timeoutIntervalForRequest = 30
             cfg.timeoutIntervalForResource = 120
-            cfg.httpAdditionalHeaders = ["User-Agent": "CleanGEO/1.0 (+https://cleangeo.ge)"]
+            cfg.httpAdditionalHeaders = ["User-Agent": "CleanGEO/1.0"]
             self.session = URLSession(configuration: cfg)
         }
         loadLocalState()

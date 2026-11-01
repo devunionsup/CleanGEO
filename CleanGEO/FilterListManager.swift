@@ -130,21 +130,12 @@ public final class FilterListManager {
     public private(set) var stats = FilterStats()
     public private(set) var schedule = UpdateSchedule.default
 
+    /// მხოლოდ საკუთარი ბლოკ-ლისტი — მესამე პირის სიები არ გამოიყენება.
     public static let defaultSources: [FilterListSource] = [
         FilterListSource(
             id: "cleangeo-main",
             name: "CleanGEO — ძირითადი",
             url: "https://raw.githubusercontent.com/devunionsup/CleanGEO/main/CleanGEO.txt",
-            enabled: true),
-        FilterListSource(
-            id: "adguard-base",
-            name: "AdGuard Base",
-            url: "https://filters.adtidy.org/extension/safari/filters/2.txt",
-            enabled: true),
-        FilterListSource(
-            id: "adguard-tracking",
-            name: "AdGuard — თრექერები",
-            url: "https://filters.adtidy.org/extension/safari/filters/3.txt",
             enabled: true)
     ]
 
@@ -159,6 +150,25 @@ public final class FilterListManager {
             self.session = URLSession(configuration: cfg)
         }
         loadLocalState()
+        // გაწმინდება: ძველი ინსტალაციებში შემორჩენილი AdGuard-სიები
+        // იშლება (სიებიდან + მათი ჩამოტვირთული raw ფაილები) —
+        // რჩება მხოლოდ შენი CleanGEO.txt.
+        pruneForeignSources()
+    }
+
+    /// არა-ლოკალური (მესამე პირის) სიების მოცილება და მათი ფაილების წაშლა.
+    private func pruneForeignSources() {
+        let ours = Set(Self.defaultSources.map { $0.id })
+        let removed = sources.filter { !ours.contains($0.id) && !$0.id.hasPrefix("custom-") }
+        guard !removed.isEmpty else { return }
+        setSources(sources.filter { ours.contains($0.id) || $0.id.hasPrefix("custom-") })
+        for src in removed {
+            try? fileManager.removeItem(at: stagingDir.appendingPathComponent("\(src.id).txt"))
+        }
+        // ძველი კომპილაცია უკვე არასწორია — ძალით განახლება შემდეგ გაშვებას
+        // აიძულებს მხოლოდ შენი სიით გადაკომპილირებას.
+        stats.lastSuccessfulUpdate = nil
+        saveStats()
     }
 
     // MARK: - Local state

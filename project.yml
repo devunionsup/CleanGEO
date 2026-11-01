@@ -23,6 +23,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV
+        GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
     info:
       path: CleanGEO/Info.plist
@@ -57,6 +58,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.BlockerExtension
+        GENERATE_INFOPLIST_FILE: YES
     info:
       path: BlockerExtension/Info.plist
       properties:
@@ -83,6 +85,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.VPN
+        GENERATE_INFOPLIST_FILE: YES
     info:
       path: CleanGEOVPN/Info.plist
       properties:

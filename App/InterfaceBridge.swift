@@ -459,7 +459,8 @@ enum DNSProbe {
 
 extension InterfaceBridge {
     /// ჯაჭვი: მომხმარებლის DoH (თუ მითითებულია) → AdGuard primary → fallback.
-    static func dohChain() -> [String] {
+    /// nonisolated: სუფთა ფუნქციაა, ნებისმიერი კონტექსტიდან იძახება.
+    nonisolated static func dohChain() -> [String] {
         var chain = InterfaceSettings.dnsChain
         for e in [TunnelManager.dohPrimary, TunnelManager.dohFallback] where !chain.contains(e) {
             chain.append(e)

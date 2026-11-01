@@ -20,6 +20,7 @@
 		AB010B /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11010B /* RootView.swift */; };
 		AB010C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 11010C /* Localizable.strings */; };
 		AB010D /* InterfaceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11010F /* InterfaceBridge.swift */; };
+		AB0111 /* TunnelStatsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110113 /* TunnelStatsStore.swift */; };
 		AB010E /* Interface.html in Resources */ = {isa = PBXBuildFile; fileRef = 110110 /* Interface.html */; };
 		AB010F /* interface.js in Resources */ = {isa = PBXBuildFile; fileRef = 110111 /* interface.js */; };
 		AB0110 /* theme.css in Resources */ = {isa = PBXBuildFile; fileRef = 110112 /* theme.css */; };
@@ -54,6 +55,7 @@
 		110106 /* DoHClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoHClient.swift; sourceTree = "<group>"; };
 		110107 /* BlockListChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockListChecker.swift; sourceTree = "<group>"; };
 		110108 /* TunnelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelManager.swift; sourceTree = "<group>"; };
+		110113 /* TunnelStatsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelStatsStore.swift; sourceTree = "<group>"; };
 		110109 /* CleanGEOApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleanGEOApp.swift; sourceTree = "<group>"; };
 		11010A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		11010B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 				110106 /* DoHClient.swift */,
 				110107 /* BlockListChecker.swift */,
 				110108 /* TunnelManager.swift */,
+				110113 /* TunnelStatsStore.swift */,
 				110109 /* CleanGEOApp.swift */,
 				11010A /* Theme.swift */,
 				11010B /* RootView.swift */,
@@ -298,6 +301,7 @@
 				AB010A /* Theme.swift in Sources */,
 				AB010B /* RootView.swift in Sources */,
 				AB010D /* InterfaceBridge.swift in Sources */,
+				AB0111 /* TunnelStatsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

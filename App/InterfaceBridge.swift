@@ -13,6 +13,7 @@ import Foundation
 import WebKit
 import SafariServices
 import NetworkExtension
+import UIKit
 
 @MainActor
 final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
@@ -91,9 +92,13 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         guard let webView else { return }
         let f = filters
         let s = filters.stats
-        let blocked = InterfaceStore.loadBlocked()
-        let week = InterfaceStore.loadWeek()
-        let top = InterfaceStore.loadTopBlocked()
+        let st = TunnelStatsStore.load()
+        let blocked = (ads: st.ads, trackers: st.trackers, queries: st.queries)
+        let week = TunnelStatsStore.loadWeek()
+        let top = st.top.map { t -> [String: Any] in
+            let pct = st.blocked > 0 ? Int((Double(t.count) / Double(st.blocked) * 100).rounded()) : 0
+            return ["host": t.host, "count": t.count, "pct": pct]
+        }
 
         safariEnabled { enabled in
             let state: [String: Any] = [
@@ -121,7 +126,7 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
                     "topBlocked": top
                 ],
                     "dns": [
-                        "doh": InterfaceSettings.doh,
+                        "doh": InterfaceSettings.doh.isEmpty ? (InterfaceBridge.dohChain().first ?? "") : InterfaceSettings.doh,
                         "dot": InterfaceSettings.dot,
                         "dnssec": InterfaceSettings.dnssec,
                         "ok": InterfaceSettings.dnsLastOK,
@@ -237,6 +242,7 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         case "updateFilters":
             do {
                 _ = try await filters.updateAll()
+                filters.publishCategoriesIfPossible()
                 toast("ფილტრები განახლდა")
             } catch {
                 toast("ვერ განახლდა: \(error.localizedDescription)")
@@ -316,7 +322,10 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
             return nil
 
         case "refreshStats", "clearStats":
-            if name == "clearStats" { InterfaceStore.clear() }
+            if name == "clearStats" {
+                TunnelStatsStore.clear()
+                TunnelStatsStore.publishCategories(sources: filters.sources)
+            }
             pushState()
             return nil
 
@@ -384,6 +393,14 @@ enum InterfaceStore {
     static func loadWeek() -> [Int] { Array(repeating: 0, count: 7) }
     static func loadTopBlocked() -> [[String: Any]] { [] }
     static func clear() {}
+}
+
+extension FilterListManager {
+    /// ფილტრების განახლების შემდეგ: კატეგორიების რუკა App Group-ში —
+    /// ტუნელი მას იყენებს დაბლოკვების "რეკლამა/თრექერი" კატეგორიზაციისთვის.
+    func publishCategoriesIfPossible() {
+        TunnelStatsStore.publishCategories(sources: sources)
+    }
 }
 
 enum DNSHealth {

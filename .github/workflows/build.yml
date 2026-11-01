@@ -77,99 +77,103 @@ jobs:
           cp signing/MY.mobileprovision \
             ~/Library/MobileDevice/Provisioning\ Profiles/037b6f42-9896-4b55-8ec6-24a37452ad3a.mobileprovision
 
-      - name: Build (unsigned IPA, user signs with their own cert)
+      - name: Install extension provisioning profiles (optional secrets)
         env:
-          P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}
+          BLOCKER_PROFILE_B64: ${{ secrets.BLOCKER_PROFILE_B64 }}
+          VPN_PROFILE_B64: ${{ secrets.VPN_PROFILE_B64 }}
+        run: |
+          mkdir -p build/extprofiles
+          if [ -n "$BLOCKER_PROFILE_B64" ]; then
+            echo -n "$BLOCKER_PROFILE_B64" | base64 --decode -o build/extprofiles/BlockerExtension.mobileprovision
+          fi
+          if [ -n "$VPN_PROFILE_B64" ]; then
+            echo -n "$VPN_PROFILE_B64" | base64 --decode -o build/extprofiles/CleanGEOVPN.mobileprovision
+          fi
+          ls -la build/extprofiles/
+
+      - name: Build archive (unsigned — signing happens after packaging)
         run: |
           set -o pipefail
-          if [ -n "$P12_CERT_B64" ]; then
-            echo "Building SIGNED with user certificate"
-            if xcodebuild archive \
-              -project CleanGEO.xcodeproj \
-              -scheme CleanGEO \
-              -destination 'generic/platform=iOS' \
-              -archivePath build/CleanGEO.xcarchive \
-              DEVELOPMENT_TEAM=S456H8HVXD \
-              CODE_SIGN_STYLE=Manual \
-              CODE_SIGN_IDENTITY="iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
-              PROVISIONING_PROFILE_SPECIFIER="00008101-001D68192E61001ERWL6R9" \
-              CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO | xcbeautify; then
-              echo signed > build/signed.flag
-            else
-              echo "Signed build failed (profile does not cover the extension bundle ID). Falling back to unsigned."
-              rm -rf build/CleanGEO.xcarchive
-              xcodebuild archive \
-                -project CleanGEO.xcodeproj \
-                -scheme CleanGEO \
-                -destination 'generic/platform=iOS' \
-                -archivePath build/CleanGEO.xcarchive \
-                CODE_SIGNING_ALLOWED=NO \
-                CODE_SIGNING_REQUIRED=NO \
-                CODE_SIGN_IDENTITY="" \
-                AD_HOC_CODE_SIGNING_ALLOWED=YES | xcbeautify
-            fi
-          else
-            echo "Building UNSIGNED (no P12_CERT_B64 secret)"
-            xcodebuild archive \
-              -project CleanGEO.xcodeproj \
-              -scheme CleanGEO \
-              -destination 'generic/platform=iOS' \
-              -archivePath build/CleanGEO.xcarchive \
-              CODE_SIGNING_ALLOWED=NO \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGN_IDENTITY="" \
-              AD_HOC_CODE_SIGNING_ALLOWED=YES | xcbeautify
-          fi
+          xcodebuild archive \
+            -project CleanGEO.xcodeproj \
+            -scheme CleanGEO \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/CleanGEO.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES | xcbeautify
 
-      - name: Package IPA
+      - name: Verify archive contents
+        run: |
+          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/
+          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/ 2>/dev/null || echo "No PlugIns dir (extension not embedded)"
+          test -d build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/BlockerExtension.appex || echo "WARNING: BlockerExtension.appex missing"
+          test -d build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/CleanGEOVPN.appex || echo "WARNING: CleanGEOVPN.appex missing"
+
+      - name: Package unsigned IPA (both extensions inside — for SwiftSign/SideStore)
         run: |
           mkdir -p build/Payload
           cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload/
           cd build
-          if [ -f signed.flag ]; then
-            zip -qry CleanGEO-signed.ipa Payload
-            cp CleanGEO-signed.ipa CleanGEO-unsigned.ipa
-          else
-            zip -qry CleanGEO-unsigned.ipa Payload
-          fi
+          zip -qry CleanGEO-unsigned.ipa Payload
           rm -rf Payload
           ls -la *.ipa
 
-      - name: Sign main app with user cert (extension stays unsigned)
+      - name: Sign app and extensions with user cert
         env:
           P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}
         if: env.P12_CERT_B64 != '' && runner.os == 'macOS'
-        # პროფაილი ერთი App-ID-ია და ორ გაფართოებას არ ფარავს; ხელმოწერა
-        # ინფორმაციულია — მთავარი არტეფაქტი unsigned IPA-ა.
+        # სრული ხელმოწერა მაშინ, როცა გაფართოებების პროფაილებიც მოწოდებულია
+        # (BLOCKER_PROFILE_B64, VPN_PROFILE_B64). თუ არა — adhoc: მხოლოდ აპი,
+        # გაფართოებებით (ისინი არ იშლება).
         continue-on-error: true
         run: |
-          # entitlements ჯერ რეალურ ფაილში — codesign process-substitution-ს (mmap)
-          # ვერ კითხულობს და "cannot read entitlement data"-ზე ვარდებოდა
+          set -e
           security cms -D -i signing/MY.mobileprovision > build/profile.plist
           /usr/bin/python3 -c "import plistlib; print(plistlib.dumps(plistlib.load(open('build/profile.plist','rb'))['Entitlements']).decode())" > build/app.entitlements
           APP=build/Payload/CleanGEO.app
           mkdir -p build/Payload
           cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload/
-          # Remove the unsigned extension so the app bundle matches the single-App-ID profile
-          rm -rf build/Payload/CleanGEO.app/PlugIns
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' build/Payload/CleanGEO.app/Info.plist
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' $APP/Info.plist
           # profile must be embedded — გარეშე ტელეფონი ინსტალაციას ვერ ამოწმებს
-          cp signing/MY.mobileprovision build/Payload/CleanGEO.app/embedded.mobileprovision
-          codesign -f -s "iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
-            --entitlements build/app.entitlements \
-            build/Payload/CleanGEO.app
-          codesign -vv build/Payload/CleanGEO.app
-          cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload
+          cp signing/MY.mobileprovision $APP/embedded.mobileprovision
+          IDENTITY="iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)"
+          FULL=1
+          for EXT in BlockerExtension CleanGEOVPN; do
+            PROF=build/extprofiles/$EXT.mobileprovision
+            if [ ! -f "$PROF" ]; then FULL=0; continue; fi
+            security cms -D -i "$PROF" > build/ext-$EXT.plist
+            /usr/bin/python3 -c "import plistlib; print(plistlib.dumps(plistlib.load(open('build/ext-$EXT.plist','rb'))['Entitlements']).decode())" > build/ext-$EXT.entitlements
+            cp "$PROF" "$APP/PlugIns/$EXT.appex/embedded.mobileprovision"
+          done
+          # ჯერ შიდა ბანდლები, ბოლოს აპი (codesign წესი).
+          if [ "$FULL" = "1" ]; then
+            codesign -f -s "$IDENTITY" --entitlements build/ext-BlockerExtension.entitlements \
+              "$APP/PlugIns/BlockerExtension.appex"
+            codesign -f -s "$IDENTITY" --entitlements build/ext-CleanGEOVPN.entitlements \
+              "$APP/PlugIns/CleanGEOVPN.appex"
+          else
+            echo "Extension profiles not provided — extensions stay unsigned inside the bundle."
+          fi
+          codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
+          codesign -vv "$APP"
+          cd build
+          if [ "$FULL" = "1" ]; then
+            zip -qry CleanGEO-signed.ipa Payload
+          else
+            rm -rf "$APP/PlugIns"
+            codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
+            codesign -vv "$APP"
+            zip -qry CleanGEO-signed-adhoc.ipa Payload
+          fi
+          rm -rf Payload
+          ls -la *.ipa
 
       - name: Verify signing (informational)
         run: |
           codesign -dvv build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app 2>&1 | head -20 || true
           security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/037b6f42-9896-4b55-8ec6-24a37452ad3a.mobileprovision 2>/dev/null | grep -A1 "application-identifier" || true
-
-      - name: Verify archive contents
-        run: |
-          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/ || true
-          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/ 2>/dev/null || echo "No PlugIns dir (extension not embedded)"
 
       - name: Attach IPA to release
         uses: softprops/action-gh-release@v2
@@ -177,18 +181,14 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: CleanGEO build ${{ github.run_number }}
           prerelease: true
-          files: |
-            build/CleanGEO-unsigned.ipa
-            build/CleanGEO-signed-adhoc.ipa
+          files: build/*.ipa
         if: always()
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: CleanGEO-ipa
-          path: |
-            build/CleanGEO-unsigned.ipa
-            build/CleanGEO-signed-adhoc.ipa
+          path: build/*.ipa
           if-no-files-found: ignore
 
       - name: Upload test summary

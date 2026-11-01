@@ -19,6 +19,10 @@
 		AB010A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11010A /* Theme.swift */; };
 		AB010B /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11010B /* RootView.swift */; };
 		AB010C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 11010C /* Localizable.strings */; };
+		AB010D /* InterfaceBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11010F /* InterfaceBridge.swift */; };
+		AB010E /* Interface.html in Resources */ = {isa = PBXBuildFile; fileRef = 110110 /* Interface.html */; };
+		AB010F /* interface.js in Resources */ = {isa = PBXBuildFile; fileRef = 110111 /* interface.js */; };
+		AB0110 /* theme.css in Resources */ = {isa = PBXBuildFile; fileRef = 110112 /* theme.css */; };
 		AB0201 /* BlockerRequestHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120101 /* BlockerRequestHandler.swift */; };
 		AB0301 /* CleanGEOTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 130101 /* CleanGEOTests.swift */; };
 /* End PBXBuildFile section */
@@ -36,6 +40,10 @@
 		11010A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		11010B /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		11010C /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "ka"; path = "ka.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		11010F /* InterfaceBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceBridge.swift; sourceTree = "<group>"; };
+		110110 /* Interface.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = Interface.html; sourceTree = "<group>"; };
+		110111 /* interface.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = interface.js; sourceTree = "<group>"; };
+		110112 /* theme.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = theme.css; sourceTree = "<group>"; };
 		11010D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		11010E /* CleanGEO.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CleanGEO.entitlements; sourceTree = "<group>"; };
 		120101 /* BlockerRequestHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockerRequestHandler.swift; sourceTree = "<group>"; };
@@ -54,6 +62,7 @@
 				000002 /* CleanGEO */,
 				000003 /* BlockerExtension */,
 				000004 /* Tests */,
+				000007 /* App */,
 				000005 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -84,6 +93,17 @@
 				130101 /* CleanGEOTests.swift */,
 			);
 			path = Tests;
+			sourceTree = "<group>";
+		};
+		000007 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				11010F /* InterfaceBridge.swift */,
+				110110 /* Interface.html */,
+				110111 /* interface.js */,
+				110112 /* theme.css */,
+			);
+			path = App;
 			sourceTree = "<group>";
 		};
 		000005 /* Products */ = {
@@ -219,6 +239,7 @@
 				AB0109 /* CleanGEOApp.swift in Sources */,
 				AB010A /* Theme.swift in Sources */,
 				AB010B /* RootView.swift in Sources */,
+				AB010D /* InterfaceBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,6 +291,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB010C /* Localizable.strings in Resources */,
+				AB010E /* Interface.html in Resources */,
+				AB010F /* interface.js in Resources */,
+				AB0110 /* theme.css in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

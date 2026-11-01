@@ -2,9 +2,10 @@
 //  RootView.swift
 //  CleanGEO
 //
-//  v3 ინტერფეისი: მცურავი დოკი, მინისებრი ბარათები, წყლის სფერო.
-//  ეკრანები მიბმულია რეალურ სერვისებზე (FilterListManager, TunnelManager,
-//  ISPBlockDetector, BlockListChecker). ლოგიკა არ შეცვლილა.
+//  v4 ინტერფეისი: App/Interface.html (WebKit, ლიკვიდ-მინის დიზაინი).
+//  Swift-ბრიჯი — App/InterfaceBridge.swift; ლოგიკა მთლიანად რეალურ
+//  სერვისებზეა (FilterListManager, TunnelManager, ISPBlockDetector,
+//  SFContentBlockerManager). ტესტო მონაცემები ინტერფეისში არ არის.
 //
 //  ეკრანები → სერვისები:
 //   • მთავარი        → TunnelManager (ტუნელი), FilterListManager (ფილტრები),
@@ -20,11 +21,58 @@
 
 import SwiftUI
 import SafariServices
+import WebKit
 
 // MARK: - UI მდგომარეობა (მხოლოდ ინტერფეისის თემა/ნავიგაცია)
 
 enum CGUITheme: String {
     case auto, light, dark
+}
+
+// MARK: - WebView კონტეინერი (App/Interface.html)
+
+struct WebViewHost: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        let vc = UIViewController()
+        vc.view.backgroundColor = .clear
+        let web = InterfaceBridge.makeWebView()
+        web.translatesAutoresizingMaskIntoConstraints = false
+        vc.view.addSubview(web)
+        NSLayoutConstraint.activate([
+            web.topAnchor.constraint(equalTo: vc.view.topAnchor),
+            web.bottomAnchor.constraint(equalTo: vc.view.bottomAnchor),
+            web.leadingAnchor.constraint(equalTo: vc.view.leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: vc.view.trailingAnchor)
+        ])
+        context.coordinator.bridge.attach(to: web)
+        return vc
+    }
+
+    func updateUIViewController(_ vc: UIViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        let bridge = InterfaceBridge()
+    }
+}
+
+enum InterfaceStartup {
+    /// სპეციფიკაცია: ფილტრების განახლების შემოწმება გაშვებისას.
+    static func checkOnLaunch() async {
+        if FilterListManager.shared.scheduledUpdateDue() {
+            _ = try? await FilterListManager.shared.updateAll()
+        }
+    }
+
+    /// ფონიდან დაბრუნებისასაც ხდება შემოწმება (BGTask-ის გარდა).
+    static func checkOnForeground() {
+        Task.detached(priority: .utility) {
+            if FilterListManager.shared.scheduledUpdateDue() {
+                _ = try? await FilterListManager.shared.updateAll()
+            }
+        }
+    }
 }
 
 @MainActor
@@ -36,9 +84,14 @@ final class UIState: ObservableObject {
            let t = CGUITheme(rawValue: raw) { return t }
         return .auto
     }()
+    static weak var shared: UIState?
 
     var current: String { stack.last ?? tab }
     var isSubpage: Bool { !stack.isEmpty }
+
+    init() {
+        UIState.shared = self
+    }
 
     func setTheme(_ t: CGUITheme) {
         theme = t
@@ -60,34 +113,15 @@ struct RootView: View {
             case .dark: return .dark
             }
         }()
-        ZStack(alignment: .bottom) {
-            CGAppBackground()
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    if ui.current == "home" {
-                        Color.clear.frame(height: 14)
-                    } else {
-                        CGNavBar(title: ScreenTitles.forKey(ui.current),
-                                 compact: ui.isSubpage) {
-                            _ = ui.stack.popLast()
-                        }
-                    }
-                    ScreenSwitch(current: ui.current)
-                        .padding(.top, ui.current == "home" ? 0 : 6)
-                    // დოკის ადგილი: Home Indicator-ის ზონის ჩათვლით
-                    Color.clear.frame(height: CGLayout.dockBottomSpace)
-                }
+        return WebViewHost()
+            .ignoresSafeArea()
+            .environment(\.colorScheme, effective ?? systemScheme)
+            .preferredColorScheme(effective)
+            .onChange(of: scenePhase) { phase in
+                if phase == .active { InterfaceStartup.checkOnForeground() }
             }
-            CGDock(activeTab: ui.tab) { key in
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                    ui.tab = key
-                    ui.stack = []
-                }
-            }
-        }
-        .preferredColorScheme(effective)
-        .environment(\.colorScheme, effective ?? systemScheme)
-        .animation(.spring(response: 0.45, dampingFraction: 0.9), value: ui.current)
+            .task { await InterfaceStartup.checkOnLaunch() }
+    }
         .onChange(of: scenePhase) { phase in
             if phase == .active {
                 Task {
@@ -142,7 +176,6 @@ struct HomeScreen: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var ui: UIState
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     var body: some View {
         let p = CGPalette.scheme(scheme)
@@ -162,9 +195,7 @@ struct HomeScreen: View {
             .padding(.horizontal, 4)
             .padding(.top, 4)
 
-            // რესპონსიული ზომა: Landscape-ში (მცირე სიმაღლე) სფერო იკუმშება,
-            // რომ ყველა ელემენტი ერთ Scroll View-ში ჩაჯდეს.
-            WaterGlobe(score: score, size: verticalSizeClass == .compact ? CGLayout.globeSizeCompact : nil) {
+            WaterGlobe(score: score) {
                 toggleProtection()
             }
             .padding(.top, 14)
@@ -295,7 +326,7 @@ struct HomeScreen: View {
             }
         }
         .padding(14)
-        .frame(minWidth: CGLayout.layerCardMin, maxWidth: CGLayout.layerCardMax, alignment: .leading)
+        .frame(width: 118, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(on ? AnyShapeStyle(LinearGradient(colors: [CGColor_.accent, CGColor_.deep],
@@ -327,7 +358,6 @@ struct StatsScreen: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var ui: UIState
     @Environment(\.colorScheme) private var scheme
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var range = "w" // დღე / კვირა / თვე
 
     // სატესტო მონაცემები (აპლიკაციას არ აქვს დაბლოკვების აღრიცხვა)
@@ -358,9 +388,7 @@ struct StatsScreen: View {
                     .tracking(-1.5)
                     .foregroundColor(p.text)
                     .monospacedDigit()
-                // Landscape-ზე დიაგრამა იკუმშება, რომ შიგთავსი სრულად ჩანდეს
-                CGBarsChart(values: r.values, labels: r.labels,
-                            maxHeight: verticalSizeClass == .compact ? CGLayout.barsMaxHeightCompact : nil)
+                CGBarsChart(values: r.values, labels: r.labels)
                     .padding(.top, 14)
             }
             .padding(18)

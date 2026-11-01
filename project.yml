@@ -1,0 +1,121 @@
+name: CleanGEO
+options:
+  bundleIdPrefix: DEV.GIORGI.DEV
+  deploymentTarget: { iOS: "16.0" }
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1"
+targets:
+  CleanGEO:
+    type: application
+    platform: iOS
+    sources:
+      - path: CleanGEO
+        excludes: ["Web/**", "Resources/**"]
+      - path: CleanGEO/Web
+        type: folder
+      - path: CleanGEO/Resources
+        type: folder
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    info:
+      path: CleanGEO/Info.plist
+      properties:
+        CFBundleDisplayName: CleanGEO
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [DEV.GIORGI.DEV.refresh]
+        UILaunchScreen: {}
+    entitlements:
+      path: CleanGEO/CleanGEO.entitlements
+      properties:
+        com.apple.security.application-groups: [group.87486bbbb00f533a.3]
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+          - dns-settings
+          - dns-proxy
+          - app-proxy-provider
+          - content-filter-provider
+    dependencies:
+      - target: BlockerExtension
+      - target: CleanGEOVPN
+  BlockerExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - BlockerExtension
+      - path: Shared/AppGroup.swift
+      - path: CleanGEO/FilterCompiler.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.BlockerExtension
+    info:
+      path: BlockerExtension/Info.plist
+      properties:
+        CFBundleDisplayName: CleanGEO Blocker
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.Safari.content-blocker
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ContentBlockerRequestHandler
+    entitlements:
+      path: BlockerExtension/BlockerExtension.entitlements
+      properties:
+        com.apple.security.application-groups: [group.87486bbbb00f533a.3]
+  CleanGEOVPN:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CleanGEOVPN
+      - Shared
+      - path: CleanGEO/DNSWire.swift
+      - path: CleanGEO/DoHClient.swift
+      - path: CleanGEO/DNSSECValidator.swift
+      - path: CleanGEO/RecursiveResolver.swift
+      - path: CleanGEO/FilterCompiler.swift
+      - path: CleanGEO/BlockListChecker.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.VPN
+    info:
+      path: CleanGEOVPN/Info.plist
+      properties:
+        CFBundleDisplayName: CleanGEO VPN
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.networkextension.packet-tunnel
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PacketTunnelProvider
+    entitlements:
+      path: CleanGEOVPN/CleanGEOVPN.entitlements
+      properties:
+        com.apple.security.application-groups: [group.87486bbbb00f533a.3]
+        com.apple.developer.networking.networkextension:
+          - packet-tunnel-provider
+          - dns-settings
+          - dns-proxy
+          - app-proxy-provider
+          - content-filter-provider
+  CleanGEOTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [CleanGEOTests]
+    dependencies:
+      - target: CleanGEO
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: DEV.GIORGI.DEV.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CleanGEO.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)CleanGEO"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  CleanGEO:
+    build: { targets: { CleanGEO: all } }
+    test: { targets: [CleanGEOTests] }

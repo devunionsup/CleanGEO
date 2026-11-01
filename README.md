@@ -1,145 +1,30 @@
-# CleanGEO 🇬🇪
+# CleanGEO
 
-ქართული, სრულად ლოკალური რეკლამისა და თრექერების ბლოკერი iOS-სთვის —
-Safari Content Blocker + ლოკალური DNS-ტუნელი + DoH დაშიფვრა + სტატისტიკა.
-AdGuard Pro-ს სქემაზე აწყობილი, მაგრამ მთლიანად საკუთარი კოდით.
+iOS აპი ქართული ვების გასასუფთავებლად: Safari Content Blocker + ლოკალური VPN (Packet Tunnel) DNS-ფილტრაციით, DoH ჯაჭვით და ქართული ინტერფეისით.
 
-**არცერთი ბაიტი არ გადის ჩვენს სერვერზე — სერვერი საერთოდ არ გვყავს.**
-გარეთ გადის მხოლოდ დაშიფრული DNS-მოთხოვნა (DoH), დანარჩენი ყველაფერი
-მოწყობილობაშივე ხდება.
+## არქიტექტურა
+| კომპონენტი | სტატუსი |
+|---|---|
+| SwiftUI + WebKit ჰიბრიდი (InterfaceBridge, სიგნატურით push) | ✔ |
+| Safari Content Blocker (FilterCompiler → blocker JSON) | ✔ |
+| ლოკალური Packet Tunnel (DNS ტუნელი, 0.0.0.0 პასუხი, DoH) | ✔ |
+| DoH (RFC 8484) ჯაჭვით + ავტო-fallback | ✔ |
+| FilterListManager (BGTask, 6 სთ) | ✔ |
+| DNSSECValidator | phase 2 |
+| RecursiveResolver | phase 2 |
+| DoT (RFC 7858) | phase 2 |
+| განრიგი (4 სლოტი) | phase 2 |
 
----
+## იდენტიფიკატორები (არ შეიცვალოს)
+- აპი: `DEV.GIORGI.DEV`
+- Safari გაფართოება: `DEV.GIORGI.DEV.BlockerExtension`
+- VPN გაფართოება: `DEV.GIORGI.DEV.VPN`
+- BGTask: `DEV.GIORGI.DEV.refresh`
+- App Group: `group.87486bbbb00f533a.3`
 
-## რა არის შიგნით (3 target)
+## CI
+`.github/workflows/build.yml` — XcodeGen → ტესტები → unsigned archive → release `build-<run_number>`. IPA შეიცავს ორივე გაფართოებას (PlugIns/).
 
-```
-CleanGEO.xcodeproj/
-├── CleanGEO/            მთავარი აპი (SwiftUI + WebKit-ჰიბრიდი)
-│   ├── TunnelManager        VPN-პროფილის შექმნა/ჩართვა/ავტო-აღდგენა
-│   ├── TunnelStatsStore     ტუნელის სტატისტიკის წაკითხვა (App Group)
-│   ├── FilterCompiler       AdGuard-თავსებადი სინტაქსი → Safari JSON
-│   ├── FilterListManager    სიების ჩამოტვირთვა, განახლება, გამოქვეყნება
-│   ├── DoHClient / DNSWire  RFC 8484 DoH-კლიენტი, wire-ფორმატი
-│   ├── DNSSECValidator      RRSIG/DS ჯაჭხი IANA root KSK-ებზე
-│   └── RecursiveResolver    სრული რეკურსია root → TLD → authoritative
-├── BlockerExtension/    Safari Content Blocker (150 000 წესამდე)
-├── CleanGEOVPN/         Packet Tunnel Provider (NetworkExtension)
-├── App/                 ინტერფეისი: Interface.html + interface.js + theme.css
-│   └── InterfaceBridge.swift   JS ⇄ Swift ბრიჯი (ყველა ღილაკი რეალურია)
-└── .github/workflows/build.yml   CI: ტესტები + IPA აწყობა + release
-```
-
----
-
-## როგორ მუშაობს დაცვა — ორი ფენა
-
-### 1) Safari ბლოკი (Content Blocker)
-- აპი კომპილირებს AdGuard-თავსებად ფილტრებს (`CleanGEO.txt` + მომხმარებლის
-  დამატებული https-სიები) Safari-ს ნატივ ფორმატში — trigger/action JSON,
-  `ignore-previous-rules` გამონაკლისებით, CSS-კოსმეტიკით.
-- წესები ინახება App Group-ში (`Filters/cleangeo-blocker.json`) — ერთი
-  კომპილაცია, ორივე მომხმარებელი (Safari + ტუნელი) კითხულობს.
-- ავტოგანახლება დღეში 4-მდე (BGAppRefresh + გაშვებისას შემოწმება);
-  ჩავარდნისას ძველი მომუშავე სია ინახება.
-
-### 2) ლოკალური VPN-ტუნელი (Packet Tunnel Provider)
-AdGuard Pro-ს ანალოგიური სქემა, სერვერის გარეშე:
-
-```
-iOS → ყველა DNS-მოთხოვნა ტუნელში (matchDomains "")
-        │
-        ├─ ბლოკლისტშია?  → პასუხი მაშინვე ტელეფონიდან (0.0.0.0 / NOERROR)
-        │                   რეკლამა საერთოდ არ იხსნება — არც Safari-ში, არც აპებში
-        │
-        └─ არა? → DoH ჯაჭვი (HTTPS, დაშიფრული):
-              1) https://dns.adguard-dns.com/dns-query     (პირველადი)
-              2) https://family.adguard-dns.com/dns-query  (ავტო-fallback)
-```
-
-- **ტუნელი თვითკმარია**: ბლოკლისტს და კატეგორიების რუკას თვითონ კითხულობს
-  App Group-იდან — აპი ან ინტერნეტი არ არის საჭირო მუშაობისთვის.
-- **მარშრუტი მხოლოდ ტუნელის შიდა DNS-მისამართზეა** (10.111.222.1/32) —
-  ტრაფიკი აპლიკაციებს პირდაპირ მიდის, სიჩქარე არ ეცემა, VPN-სერვერი
-  არსად არსებობს.
-- **ჯაჭვის ავტო-fallback**: პირველადი DoH ვერ პასუხობს → ტუნელი თავისით
-  გადადის სარეზერვოზე და იმახსოვრებს; აპი ფონურად ამოწმებს ჯანმრთელობას
-  (ლატენტობა ჩანს ინტერფეისში).
-- **სტატისტიკა**: მოთხოვნები, დაბლოკვები (რეკლამა/თრექერი კატეგორიებით),
-  ტოპ-10 დომენი, 7-დღიანი გრაფიკი, ტრაფიკის ბაიტები — ინახება
-  `Filters/dns-stats.json`-ში (App Group), აპი 5 წამში ერთხელ სინქრონდება.
-- **ავტო-აღდგენა**: ძველი/გაუფუჭებული VPN-პროფილი („Update Required")
-  ჩართვისას აპი თვითონ შლის და ნულიდან ქმნის.
-
-### დაშიფვრა
-- **DoH (RFC 8484)** — POST `application/dns-message`, timeout, ჯაჭვი.
-- **DoT (RFC 7858)** — TLS 1.3, მომხმარებლის არჩევით.
-- **DNSSEC** — სრული ჯაჭხი: IANA root KSK (20326, 38696) → DS → DNSKEY →
-  RRSIG (RSA-SHA256/512, ECDSA P-256/384, Ed25519), ვადების კონტროლი.
-- რეკურსიული რეზოლვერი root → TLD → authoritative, TTL-კეში,
-  0x20 case-randomization, bailiwick-კონტროლი, anti-loop.
-
----
-
-## ინტერფეისი
-
-- მთლიანად ქართული, ლიკვიდ-მინის სტილი (glass ბარათები, წყლის სფერო).
-- WebKit-ჰიბრიდი: `Interface.html` + `interface.js`, ბრიჯი ყველა ღილაკს
-  რეალურ სერვისზე ამაგრებს — **ტესტო მონაცემები არსად არის**, რაც
-  სერვისებმა არ იციან, ინტერფეისი პატიოსნად აჩვენებს (0 ან „—").
-- მსუბუქი/მუქი/ავტო თემა; სტატუსები ციმციმებს არ ცვლის — push მხოლოდ
-  რეალური ცვლილებისას ხდება (JSON-სიგნატურის დიფი ორივე მხარეს).
-- ეკრანები: მთავარი (გლობუსი + ჩართვა), სტატისტიკა, ფილტრები, DNS,
-  Safari, პარამეტრები.
-
----
-
-## აწყობა (CI, ადგილობრივი Xcode-ის გარეშე)
-
-1. GitHub Actions → `build.yml`: ტესტები (XCTest + 6-მოწყობილობიანი
-   layout-მატრიცა) → unsigned IPA → (ინფორმაციული) ad-hoc ხელმოწერა →
-   release `build-N`.
-2. **დააყენე `CleanGEO-unsigned.ipa`** — ის ორივე გაფართოებას შეიცავს
-   (BlockerExtension + CleanGEOVPN). ხელი მოაწერე SwiftSign/Feather/SideStore-ით.
-   ⚠️ `CleanGEO-app-only-signed.ipa` მხოლოდ აპია გაფართოებების გარეშე —
-   Safari-ს „Manage Extensions" მასში არ გამოჩნდება.
-3. პირველი გაშვება: Safari → პარამეტრები → გაფართოებები → CleanGEO →
-   დაუშვი; აპში ჩართე ტუნელი → iOS ნებართვას ითხოვს.
-
-### მოთხოვნები
-- iOS 16.0+, Xcode 15.2 (CI-ზე), Swift 5.9.
-- App Group `group.87486bbbb00f533a.3` და NetworkExtension entitlements —
-  provisioning profile-ში (რეპოში `signing/MY.mobileprovision`).
-- profile ფარავს მხოლოდ მთავარ bundle ID-ს (`...ursamajor1675`);
-  ორი გაფართოებით profile-ს აახლებს Apple Developer Portal-ზე შენ —
-  ამის შემდეგ CI-ს signed-ვარიანტიც სრული გამოვუყვანი.
-
----
-
-## ტესტირება
-
-- **XCTest (CI-ზე, ყოველ push-ზე)**: ფილტრ-კომპილატორი, wire-ფორმატი,
-  DNSSEC-კანონიზაცია, modpow, კეში, განრიგი, ქართული შეცდომების ტექსტები.
-- **Layout-მატრიცა**: 6 მოწყობილობა (SE → Pro Max), portrait + landscape.
-- **ოფლაინ-ვერიფიკაცია** (`tools/verify_logic.py`): ალგორითმების
-  სარკე-შემოწმება (7/7 სცენარი).
-
-**ზღვარი**: რეალური მოწყობილობის ქცევა (Safari გაფართოება ცოცხლად,
-BGTask ფონურად, IPA ინსტალაცია) ამ გარემოდან არ მოწმდება — ამას შენი
-პირველი ინსტალაცია ამოწმებს.
-
----
-
-## პრივატულობა
-
-- ანალიტიკა არაა, ლოგები არაა, ტელემეტრია არაა.
-- ფილტრები მხოლოდ https-ით იტვირთება, SHA-256 შემოწმებით.
-- სტატისტიკა მოწყობილობაზე რჩება (App Group), წაშლა შესაძლებელია აპიდან.
-- DoH-პროვაიდერის წინაშე ჩანს მხოლოდ დაშიფრული DNS-მოთხოვნა; აირჩიე
-  ნებისმიერი საკუთარი URL — ნაგულისხმევი AdGuard-ია (შეცვლა DNS-ეკრანზე).
-
----
-
-## ლიცენზია
-
-პირადი პროექტი. ფილტრ-სია `CleanGEO.txt` — საზოგადოებრივი წვლილით,
-AdGuard-სინტაქსის თავსებადი.
+## ფილტრები
+- ჩაშენებული: `CleanGEO/CleanGEO/Resources/CleanGEO.txt`
+- დამატებითი: მხოლოდ https-სიები აპიდან.

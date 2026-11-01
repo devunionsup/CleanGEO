@@ -1,0 +1,18 @@
+! CleanGEO starter list (AdGuard-compatible subset)
+||doubleclick.net^
+||googlesyndication.com^
+||googleadservices.com^
+||adservice.google.com^
+||google-analytics.com^
+||googletagmanager.com^
+||facebook.net^
+||connect.facebook.net^
+||adnxs.com^
+||taboola.com^
+||outbrain.com^
+||scorecardresearch.com^
+||hotjar.com^
+||mixpanel.com^
+@@||example.ge^
+###ad-banner
+example.ge##.ad-slot

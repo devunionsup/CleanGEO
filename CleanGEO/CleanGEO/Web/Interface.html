@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="theme.css">
+<title>CleanGEO</title>
+</head>
+<body>
+<main>
+  <section id="home" class="screen active">
+    <h1>CleanGEO 🇬🇪</h1>
+    <div class="glass center">
+      <div class="orb" id="orb"></div>
+      <div id="tunnelStatus">—</div>
+      <button id="toggle">ჩართვა</button>
+    </div>
+    <div class="glass"><div class="big" id="blocked">0</div><div>დაბლოკილი მოთხოვნა</div></div>
+  </section>
+
+  <section id="stats" class="screen">
+    <h2>სტატისტიკა</h2>
+    <div class="glass grid">
+      <div><b id="total">0</b><span>მოთხოვნა</span></div>
+      <div><b id="ads">0</b><span>რეკლამა</span></div>
+      <div><b id="trackers">0</b><span>თრექერი</span></div>
+      <div><b id="bytes">—</b><span>ტრაფიკი</span></div>
+    </div>
+    <div class="glass"><h3>7 დღე</h3><div id="chart" class="chart"></div></div>
+    <div class="glass"><h3>ტოპ-10 დომენი</h3><ol id="top"></ol></div>
+    <button id="clear" class="ghost">სტატისტიკის წაშლა</button>
+  </section>
+
+  <section id="filters" class="screen">
+    <h2>ფილტრები</h2>
+    <div class="glass"><div>წესები: <b id="rules">0</b></div><div id="updated">—</div>
+      <button id="update">განახლება</button></div>
+    <div class="glass"><h3>ჩემი სიები (https)</h3><ul id="lists"></ul>
+      <input id="listUrl" placeholder="https://..."><button id="addList">დამატება</button></div>
+  </section>
+
+  <section id="dns" class="screen">
+    <h2>DNS</h2>
+    <div class="glass"><div>DoH: dns.adguard-dns.com</div><div id="latency">—</div>
+      <button id="probe">შემოწმება</button></div>
+  </section>
+
+  <p id="error" class="error"></p>
+</main>
+<nav>
+  <button data-s="home" class="on">მთავარი</button>
+  <button data-s="stats">სტატ.</button>
+  <button data-s="filters">ფილტრები</button>
+  <button data-s="dns">DNS</button>
+</nav>
+<script src="interface.js"></script>
+</body>
+</html>

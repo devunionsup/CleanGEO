@@ -1,202 +1,47 @@
-name: Build CleanGEO IPA
-
+name: build
 on:
   push:
-    branches: [ main, remote-mirror ]
-  pull_request:
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: macos-15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Select Xcode
+      - uses: actions/checkout@v4
+      - name: Select Xcode 15.2
         run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
-      - name: Show toolchain
-        run: |
-          xcodebuild -version
-          swift --version
-
-      - name: Run unit tests (macOS-compatible parts)
-        run: |
-          swift test 2>/dev/null || echo "No SPM tests; running xcodebuild tests below."
-          xcodebuild test \
-            -project CleanGEO.xcodeproj \
-            -scheme CleanGEO \
-            -destination 'platform=iOS Simulator,name=iPhone 15' \
-            -skipPackagePluginValidation \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify || true
-
-      - name: Screen-adaptation test matrix (6 required devices, portrait + landscape)
-        run: |
-          for DEV in \
-            'platform=iOS Simulator,name=iPhone SE (3rd generation)' \
-            'platform=iOS Simulator,name=iPhone 12 mini' \
-            'platform=iOS Simulator,name=iPhone 12 Pro Max' \
-            'platform=iOS Simulator,name=iPhone 14' \
-            'platform=iOS Simulator,name=iPhone 15 Pro' \
-            'platform=iOS Simulator,name=iPhone 16 Pro Max'; do
-            for ORIENT in portrait landscape; do
-              echo "=== $DEV [$ORIENT] ==="
-              xcodebuild test \
-                -project CleanGEO.xcodeproj \
-                -scheme CleanGEO \
-                -destination "$DEV" \
-                -only-testing:CleanGEOTests/LayoutAdaptationTests \
-                -skipPackagePluginValidation \
-                CODE_SIGNING_ALLOWED=NO 2>&1 | tail -3 || true
-            done
-          done
-
-      - name: Install signing certificate
-        env:
-          P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        if: env.P12_CERT_B64 != ''
-        run: |
-          CERTIFICATE_PATH=$RUNNER_TEMP/cert.p12
-          KEYCHAIN_PATH=$RUNNER_TEMP/app.keychain-db
-          echo -n "$P12_CERT_B64" | base64 --decode -o $CERTIFICATE_PATH
-          security create-keychain -p ci-keychain-pass $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p ci-keychain-pass $KEYCHAIN_PATH
-          security import $CERTIFICATE_PATH -P "$KEYCHAIN_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k ci-keychain-pass $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH login.keychain
-
-      - name: Install provisioning profile
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp signing/MY.mobileprovision \
-            ~/Library/MobileDevice/Provisioning\ Profiles/037b6f42-9896-4b55-8ec6-24a37452ad3a.mobileprovision
-
-      - name: Install extension provisioning profiles (optional secrets)
-        env:
-          BLOCKER_PROFILE_B64: ${{ secrets.BLOCKER_PROFILE_B64 }}
-          VPN_PROFILE_B64: ${{ secrets.VPN_PROFILE_B64 }}
-        run: |
-          mkdir -p build/extprofiles
-          if [ -n "$BLOCKER_PROFILE_B64" ]; then
-            echo -n "$BLOCKER_PROFILE_B64" | base64 --decode -o build/extprofiles/BlockerExtension.mobileprovision
-          fi
-          if [ -n "$VPN_PROFILE_B64" ]; then
-            echo -n "$VPN_PROFILE_B64" | base64 --decode -o build/extprofiles/CleanGEOVPN.mobileprovision
-          fi
-          ls -la build/extprofiles/
-
-      - name: Build archive (unsigned — signing happens after packaging)
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Unit tests
         run: |
           set -o pipefail
-          xcodebuild archive \
-            -project CleanGEO.xcodeproj \
-            -scheme CleanGEO \
-            -destination 'generic/platform=iOS' \
-            -archivePath build/CleanGEO.xcarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES | xcbeautify
-
-      - name: Verify archive contents
+          xcodebuild test -project CleanGEO.xcodeproj -scheme CleanGEO \
+            -destination 'platform=iOS Simulator,name=iPhone 15' \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO | tail -n 60
+      - name: Archive (unsigned, both extensions must be embedded)
         run: |
-          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/
-          ls -la build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/ 2>/dev/null || echo "No PlugIns dir (extension not embedded)"
-          test -d build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/BlockerExtension.appex || echo "WARNING: BlockerExtension.appex missing"
-          test -d build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app/PlugIns/CleanGEOVPN.appex || echo "WARNING: CleanGEOVPN.appex missing"
-
-      - name: Package unsigned IPA (both extensions inside — for SwiftSign/SideStore)
-        run: |
-          mkdir -p build/Payload
-          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload/
-          cd build
-          zip -qry CleanGEO-unsigned.ipa Payload
-          rm -rf Payload
-          ls -la *.ipa
-
-      - name: Sign app and extensions with user cert
-        env:
-          P12_CERT_B64: ${{ secrets.P12_CERT_B64 }}
-        if: env.P12_CERT_B64 != '' && runner.os == 'macOS'
-        # სრული ხელმოწერა მაშინ, როცა გაფართოებების პროფაილებიც მოწოდებულია
-        # (BLOCKER_PROFILE_B64, VPN_PROFILE_B64). თუ არა — adhoc: მხოლოდ აპი,
-        # გაფართოებებით (ისინი არ იშლება).
-        continue-on-error: true
-        run: |
-          set -e
-          security cms -D -i signing/MY.mobileprovision > build/profile.plist
-          /usr/bin/python3 -c "import plistlib; print(plistlib.dumps(plistlib.load(open('build/profile.plist','rb'))['Entitlements']).decode())" > build/app.entitlements
-          APP=build/Payload/CleanGEO.app
-          mkdir -p build/Payload
-          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload/
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' $APP/Info.plist
-          # profile must be embedded — გარეშე ტელეფონი ინსტალაციას ვერ ამოწმებს
-          cp signing/MY.mobileprovision $APP/embedded.mobileprovision
-          IDENTITY="iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)"
-          FULL=1
-          for EXT in BlockerExtension CleanGEOVPN; do
-            PROF=build/extprofiles/$EXT.mobileprovision
-            if [ ! -f "$PROF" ]; then FULL=0; continue; fi
-            security cms -D -i "$PROF" > build/ext-$EXT.plist
-            /usr/bin/python3 -c "import plistlib; print(plistlib.dumps(plistlib.load(open('build/ext-$EXT.plist','rb'))['Entitlements']).decode())" > build/ext-$EXT.entitlements
-            cp "$PROF" "$APP/PlugIns/$EXT.appex/embedded.mobileprovision"
-          done
-          # ჯერ შიდა ბანდლები, ბოლოს აპი (codesign წესი).
-          if [ "$FULL" = "1" ]; then
-            codesign -f -s "$IDENTITY" --entitlements build/ext-BlockerExtension.entitlements \
-              "$APP/PlugIns/BlockerExtension.appex"
-            codesign -f -s "$IDENTITY" --entitlements build/ext-CleanGEOVPN.entitlements \
-              "$APP/PlugIns/CleanGEOVPN.appex"
-          else
-            echo "Extension profiles not provided — extensions stay unsigned inside the bundle."
-          fi
-          codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
-          codesign -vv "$APP"
-          if [ "$FULL" = "1" ]; then
-            cd build && zip -qry CleanGEO-signed.ipa Payload
-          else
-            # აპი მარტო (გაფართოებების პროფილების გარეშე): PlugIns-ის მოშორების
-            # შემდეგ ბეჭედი ირღვევა — ხელახალი ხელმოწერა სავალდებულოა.
-            rm -rf "$APP/PlugIns"
-            codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
-            codesign -vv "$APP"
-            cd build && zip -qry CleanGEO-app-only-signed.ipa Payload
-          fi
-          rm -rf build/Payload 2>/dev/null || true
-          ls -la *.ipa
-
-      - name: Verify signing (informational)
-        run: |
-          codesign -dvv build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app 2>&1 | head -20 || true
-          security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/037b6f42-9896-4b55-8ec6-24a37452ad3a.mobileprovision 2>/dev/null | grep -A1 "application-identifier" || true
-
-      - name: Attach IPA to release
+          set -o pipefail
+          xcodebuild archive -project CleanGEO.xcodeproj -scheme CleanGEO -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath build/CleanGEO.xcarchive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -n 40
+          mkdir -p Payload
+          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app Payload/
+          test -d Payload/CleanGEO.app/PlugIns/BlockerExtension.appex
+          test -d Payload/CleanGEO.app/PlugIns/CleanGEOVPN.appex
+          zip -qr CleanGEO-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CleanGEO-unsigned
+          path: CleanGEO-unsigned.ipa
+      - name: Release
+        if: always()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: CleanGEO build ${{ github.run_number }}
           prerelease: true
-          files: build/*.ipa
-        if: always()
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CleanGEO-ipa
-          path: build/*.ipa
-          if-no-files-found: ignore
-
-      - name: Upload test summary
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: |
-            build/*.log
-          if-no-files-found: ignore
+          files: CleanGEO-unsigned.ipa

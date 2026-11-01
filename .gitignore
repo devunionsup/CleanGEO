@@ -1,7 +1,6 @@
-# Local secrets — never commit
-cert_unpacked/
-cert_tmp/
-*.p12
-*.zip
-signing/*.p12
-tools/P12_CERT_B64.txt
+*.xcodeproj
+build/
+Payload/
+DerivedData/
+*.ipa
+.DS_Store

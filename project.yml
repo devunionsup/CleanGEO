@@ -28,6 +28,7 @@ targets:
       path: CleanGEO/Info.plist
       properties:
         CFBundleDisplayName: CleanGEO
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         UIBackgroundModes: [fetch]
@@ -60,6 +61,7 @@ targets:
       path: BlockerExtension/Info.plist
       properties:
         CFBundleDisplayName: CleanGEO Blocker
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         NSExtension:
@@ -85,6 +87,7 @@ targets:
       path: CleanGEOVPN/Info.plist
       properties:
         CFBundleDisplayName: CleanGEO VPN
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         NSExtension:

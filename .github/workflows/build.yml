@@ -166,7 +166,7 @@ jobs:
             rm -rf "$APP/PlugIns"
             codesign -f -s "$IDENTITY" --entitlements build/app.entitlements "$APP"
             codesign -vv "$APP"
-            cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload
+            cd build && zip -qry CleanGEO-app-only-signed.ipa Payload
           fi
           rm -rf build/Payload 2>/dev/null || true
           ls -la *.ipa

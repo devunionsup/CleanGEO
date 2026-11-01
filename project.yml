@@ -75,8 +75,6 @@ targets:
     sources:
       - CleanGEOVPN
       - Shared
-      - path: CleanGEO/CleanGEO/DNSWire.swift
-      - path: CleanGEO/CleanGEO/DoHClient.swift
       - path: CleanGEO/CleanGEO/DNSSECValidator.swift
       - path: CleanGEO/CleanGEO/RecursiveResolver.swift
       - path: CleanGEO/CleanGEO/FilterCompiler.swift

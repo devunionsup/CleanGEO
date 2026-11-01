@@ -85,7 +85,7 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
                 ],
                 "safari": [
                     "enabled": enabled,
-                    "rules": filters.publishedRuleCount(),
+                    "rules": self.filters.publishedRuleCount(),
                     "updating": false,
                     "lastUpdate": Self.millis(s.lastSuccessfulUpdate)
                 ],
@@ -205,14 +205,14 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
 
         case "toggleSafari":
             let enabledNow: Bool = await withCheckedContinuation { cont in
-                SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: FilterListManager.blockerID) { en, _ in
-                    cont.resume(returning: en)
+                SFContentBlockerManager.getStateOfContentBlocker(withIdentifier: FilterListManager.blockerID) { state, _ in
+                    cont.resume(returning: state?.isEnabled == true)
                 }
             }
             guard enabledNow else {
                 throw BridgeError(message: "ჩართე პარამეტრებში: Safari → გაფართოებები → CleanGEO")
             }
-            try await FilterListManager.reloadSafariBlocker()
+            try await filters.reloadSafariBlocker()
             pushState()
             return nil
 
@@ -275,8 +275,8 @@ final class InterfaceBridge: NSObject, WKScriptMessageHandler, WKNavigationDeleg
             let latency = try await DNSHealth.test(
                 doh: InterfaceSettings.doh, dot: InterfaceSettings.dot,
                 dnssec: InterfaceSettings.dnssec)
-            InterfaceSettings.dnsLastOK = true
-            InterfaceSettings.dnsLastLatency = latency
+            InterfaceSettings.setDnsOK(true)
+            InterfaceSettings.setDnsLatency(latency)
             pushState()
             return ["latency": latency]
 
@@ -346,6 +346,8 @@ enum InterfaceSettings {
     static var dnsOnly: Bool { get { d.object(forKey: "cg.dnsOnly") as? Bool ?? true } set { d.set(newValue, forKey: "cg.dnsOnly") } }
     static var dnsLastOK: Any { d.object(forKey: "cg.dnsLastOK") as? Bool ?? NSNull() as Any }
     static var dnsLastLatency: Any { d.object(forKey: "cg.dnsLastLatency") as? Int ?? NSNull() as Any }
+    static func setDnsOK(_ v: Bool) { d.set(v, forKey: "cg.dnsLastOK") }
+    static func setDnsLatency(_ v: Int) { d.set(v, forKey: "cg.dnsLastLatency") }
 }
 
 enum InterfaceStore {

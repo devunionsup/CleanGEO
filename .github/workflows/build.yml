@@ -147,17 +147,19 @@ jobs:
           # ვერ კითხულობს და "cannot read entitlement data"-ზე ვარდებოდა
           security cms -D -i signing/MY.mobileprovision > build/profile.plist
           /usr/bin/python3 -c "import plistlib; print(plistlib.dumps(plistlib.load(open('build/profile.plist','rb'))['Entitlements']).decode())" > build/app.entitlements
-          APP=build/Payload_tmp/CleanGEO.app
-          mkdir -p build/Payload_tmp
-          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload_tmp/
+          APP=build/Payload/CleanGEO.app
+          mkdir -p build/Payload
+          cp -R build/CleanGEO.xcarchive/Products/Applications/CleanGEO.app build/Payload/
           # Remove the unsigned extension so the app bundle matches the single-App-ID profile
-          rm -rf build/Payload_tmp/CleanGEO.app/PlugIns
-          /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' build/Payload_tmp/CleanGEO.app/Info.plist
+          rm -rf build/Payload/CleanGEO.app/PlugIns
+          /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier app.beet2811.ursamajor1675' build/Payload/CleanGEO.app/Info.plist
+          # profile must be embedded — გარეშე ტელეფონი ინსტალაციას ვერ ამოწმებს
+          cp signing/MY.mobileprovision build/Payload/CleanGEO.app/embedded.mobileprovision
           codesign -f -s "iPhone Distribution: Boxes General Trading LLC (S456H8HVXD)" \
             --entitlements build/app.entitlements \
-            build/Payload_tmp/CleanGEO.app
-          codesign -vv build/Payload_tmp/CleanGEO.app
-          cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload_tmp
+            build/Payload/CleanGEO.app
+          codesign -vv build/Payload/CleanGEO.app
+          cd build && zip -qry CleanGEO-signed-adhoc.ipa Payload
 
       - name: Verify signing (informational)
         run: |

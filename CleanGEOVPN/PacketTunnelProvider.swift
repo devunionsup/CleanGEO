@@ -130,7 +130,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     private final class StatsCounter {
+        private typealias Day = TunnelStats.Day
+        private typealias Top = TunnelStats.Top
+
         private var stats = TunnelStats()
+        private let categories: LocalCategories?
         private let lock = NSLock()
         private let queue = DispatchQueue(label: "cleangeo.stats.flush")
         private var timer: DispatchSourceTimer?
@@ -144,7 +148,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return f
         }()
 
-        init() {
+        init(categories: LocalCategories?) {
+            self.categories = categories
             fileURL = FileManager.default
                 .containerURL(forSecurityApplicationGroupIdentifier: PacketTunnelProvider.appGroup)?
                 .appendingPathComponent(PacketTunnelProvider.statsFilePath)
@@ -270,7 +275,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         categories = cats
 
         // 2) სტატისტიკა: წინა მნიშვნელობები ინახება (ფაილიდან იკითხება).
-        let counter = StatsCounter()
+        let counter = StatsCounter(categories: cats)
         counter.startAutoFlush()
         stats = counter
 

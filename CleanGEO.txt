@@ -245,6 +245,16 @@ ge.movie##[id^="popup"]
 
 
 
+
+
+! geoflix.net
+
+
+geoflix.net##section.gf-vip-mobile
+
+
+
+
 ! adjaranet.bet
 
 

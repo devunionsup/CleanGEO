@@ -43,6 +43,10 @@
 ||*my.toruftuiov.com*$all
 ||*nwien.com*$all
 ||*port80ge.adocean.pl*mp4*$all
+||*adx.stack.bidster.net*$all
+||player.abyssplayer.com^$script
+
+
 
 
 ! domin virus link host CDN~^

@@ -45,7 +45,7 @@
 ||*port80ge.adocean.pl*mp4*$all
 ||*adx.stack.bidster.net*$all
 ||*decafeligiblyhad.com*$all
-
+||*morphify.net*$all
 
 
 ! domin virus link host CDN~^

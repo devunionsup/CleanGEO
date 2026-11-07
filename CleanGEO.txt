@@ -46,7 +46,7 @@
 ||*adx.stack.bidster.net*$all
 ||*decafeligiblyhad.com*$all
 ||*morphify.net*$all
-
+||*sentry.io*$all
 
 ! domin virus link host CDN~^
 ! all website block html elemnt >

@@ -254,7 +254,7 @@ ge.movie##[id^="popup"]
 ! geoflix.net
 
 
-geoflix.net##section.gf-vip-mobile
+geoflix.net##[class*="gf-vip"]
 
 
 

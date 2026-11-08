@@ -48,7 +48,7 @@
 ||*morphify.net*$all
 ||*sentry.io*$all
 ||*mc*yandex.ru^
-
+||*doubleclick.net*$all
 
 
 ! domin virus link host CDN~^

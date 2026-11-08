@@ -57,8 +57,8 @@
 ||*bancadeltempoidea.org*$all
 ||*cloudflareinsights.com*$all
 ||*googlesyndication.com*$all
-||n6wxm.com^*$all
-||hai8g.com^*$all
+||*n6wxm.com^*$all
+||*hai8g.com^*$all
 
 
 

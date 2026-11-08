@@ -49,6 +49,14 @@
 ||*sentry.io*$all
 ||*mc*yandex.ru^
 ||*doubleclick.net*$all
+||*webvisor.org*$all
+||*acscdn.com*$all
+||*sammierkelima.com*$all
+||*bancadeltempoidea.org*$all
+||*cloudflareinsights.com*$all
+
+
+
 
 
 ! domin virus link host CDN~^

@@ -86,8 +86,8 @@
 
 ! ikinogo.com
 
-||nwien.com*mp4*$all
-||mtvwyrmb.com*mp4*$all
+||nwien.com*$all
+||mtvwyrmb.com*$all
 
 
 
@@ -99,14 +99,14 @@
 
 ! kinogo.org
 
-||vvru.spdmpgcdn.com*mp4*$all
+||vvru.spdmpgcdn.com*$all
 
 
 
 ! geo-film.org
 
 
-||*river-3-329.kinescopecdn.net*mp4*
+||*river-3-329.kinescopecdn.net*$all
 
 
 
@@ -118,20 +118,20 @@
 
 ! kinoworld.net
 
-||strm.yandex.ru*mp4*$all
+||*strm*yandex.ru^$all
 
 
 ! uyure.net
 
 
-||videos.uyure.net*mp4*$all
+||videos.uyure.net*$all
 
 
 
 ! geofilms.net
 
 
-||add.geofilms.net*mp4*$all
+||*add*geofilms.net^$all
 
 
 

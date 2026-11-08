@@ -47,6 +47,9 @@
 ||*decafeligiblyhad.com*$all
 ||*morphify.net*$all
 ||*sentry.io*$all
+||*mc*yandex.ru^
+
+
 
 ! domin virus link host CDN~^
 ! all website block html elemnt >

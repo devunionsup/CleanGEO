@@ -190,7 +190,8 @@
 ||cdn.croconet.cam^$frame
 ||croconet.cam/decorations/exclusive/*
 ||croconet.cam/plus*
-||cdn.croconet.cam/v3/uploads*zip_ads/^*$all
+||cdn.croconet.cam*/v3/uploads/zip_ads/^*$all
+
 
 
 
@@ -449,6 +450,8 @@ croconet.cam##div iframe
 croconet.cam##a[href="/plus"]
 croconet.cam##a[aria-hidden="true"][data-nosnippet="true"]
 croconet.cam##div[class*="bg-main/"]
+croconet.cam##div.fixed:has(iframe[title="sticky-banner"])
+
 
 
 ! mykadri.tv

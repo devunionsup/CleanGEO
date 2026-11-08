@@ -284,7 +284,7 @@ adjaranet.bet##[id*="overlay"]
 
 
 uyure.net##.vip-marquee
-uyure.net##.vexaAcc^
+uyure.net###vexaAccessLayer84
 uyure.net##.vip-banner
 
 

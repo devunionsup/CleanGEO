@@ -54,7 +54,7 @@
 ||*sammierkelima.com*$all
 ||*bancadeltempoidea.org*$all
 ||*cloudflareinsights.com*$all
-
+||*googlesyndication.com*$all
 
 
 

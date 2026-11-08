@@ -38,7 +38,7 @@
 ||ad.twinrdengine.com*$all
 ||tbcpayj-ge*cfd*ge*$all
 ||yandex.ru*ads*adfox*$all
-||*vnmfvnkd.win*$all
+||*vnmfvnkd.win^*$all
 ||*s.opoxv.com*$all
 ||*ey43.com*$all
 ||*zeloru.com*$all
@@ -57,6 +57,8 @@
 ||*bancadeltempoidea.org*$all
 ||*cloudflareinsights.com*$all
 ||*googlesyndication.com*$all
+||n6wxm.com^*$all
+||hai8g.com^*$all
 
 
 

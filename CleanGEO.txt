@@ -190,6 +190,7 @@
 ||cdn.croconet.cam^$frame
 ||croconet.cam/decorations/exclusive/*
 ||croconet.cam/plus*
+||cdn.croconet.cam/v3/uploads*zip_ads/^*$all
 
 
 

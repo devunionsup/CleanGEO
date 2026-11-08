@@ -291,6 +291,7 @@ uyure.net##.vip-marquee
 
 
 kinoebi.in###fbOverlay
+kinoebi.in##.popup__box, .spick__box, .pbell, .spick__btn, .pbell__btn, .pprompt
 
 
 

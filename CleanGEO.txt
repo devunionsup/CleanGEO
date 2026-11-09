@@ -68,8 +68,8 @@
 
 
 
-##iframe[src*="trannygem.com"]
-##iframe[src*="a.adtng.com"]
+##iframe[src*="trannygem.com"]:remove()
+##iframe[src*="a.adtng.com"]:remove()
 
 
 
@@ -144,6 +144,12 @@
 
 
 
+! ufasofilmebi.net
+
+||ufasofilmebi.cc*
+ufasofilmebi.net##img:remove()
+
+
 ! asia.com.ge
 
 ||asia.com.ge*mp4*$all
@@ -184,6 +190,10 @@
 ! adjaranet.ai
 
 ||adjaranet.ai*asvl/preroll*$all
+||adjaranet.ai/rolls/cat/*
+||adjaranet.ai/*asvl/banner*$all
+||adjaranet.ai*asvl*$all
+
 
 
 ! croconet.cam
@@ -230,37 +240,35 @@
 ! qartulad.in
 
 
-qartulad.in##div.avc-cro
-qartulad.in##.jw-banner
-qartulad.in##.ad-catfish
+qartulad.in##div.avc-cro:remove()
+qartulad.in##.jw-banner:remove()
+qartulad.in##.ad-catfish:remove()
 
 
 
 ! adjaranets.com
 
 
-adjaranets.com##section[class~="sm:wrapper"]:has(> div > center a[download])
-adjaranets.com##a[href="https://py.md/MediaPlayer"]
+adjaranets.com##section[class~="sm:wrapper"]:has(> div > center a[download]):remove()
+adjaranets.com##a[href="https://py.md/MediaPlayer"]:remove()
 
 
 
 ! combatfootages.com
 
 
-combatfootages.com##a.display-ad
-combatfootages.com##.adblock-bait-wrap
-combatfootages.com##.adblock-wall
+combatfootages.com##a.display-ad:remove()
+combatfootages.com##.adblock-bait-wrap:remove()
+combatfootages.com##.adblock-wall:remove()
 combatfootages.com#$?#body { overflow: auto !important; }
 combatfootages.com#$?#html { overflow: auto !important; }
 
 
 
 
-
-
 ! ge.movie
 
-ge.movie##[id^="popup"]
+ge.movie##[id^="popup"]:remove()
 
 
 
@@ -269,7 +277,7 @@ ge.movie##[id^="popup"]
 ! geoflix.net
 
 
-geoflix.net##[class*="gf-vip"]
+geoflix.net##[class*="gf-vip"]:remove()
 
 
 
@@ -277,18 +285,18 @@ geoflix.net##[class*="gf-vip"]
 ! adjaranet.bet
 
 
-adjaranet.bet##.fixed.inset-0
-adjaranet.bet##[class*="overlay"]
-adjaranet.bet##[id*="overlay"]
+adjaranet.bet##.fixed.inset-0:remove()
+adjaranet.bet##[class*="overlay"]:remove()
+adjaranet.bet##[id*="overlay"]:remove()
 
 
 
 ! uyure.net
 
 
-uyure.net##.vip-marquee
-uyure.net###vexaAccessLayer84
-uyure.net##.vip-banner
+uyure.net##.vip-marquee:remove()
+uyure.net###vexaAccessLayer84:remove()
+uyure.net##.vip-banner:remove()
 
 
 
@@ -296,95 +304,85 @@ uyure.net##.vip-banner
 ! kinoebi.in
 
 
-kinoebi.in###fbOverlay
-kinoebi.in##.popup__box, .spick__box, .pbell, .spick__btn, .pbell__btn, .pprompt
-
-
-
-! cinematic.ge
+kinoebi.in###fbOverlay:remove()
+kinoebi.in##.popup__box:remove()
+kinoebi.in##.spick__box:remove()
+kinoebi.in##.pbell:remove()
+kinoebi.in##.spick__btn:remove()
+kinoebi.in##.pbell__btn:remove()
+kinoebi.in##.pprompt:remove()
 
 
 
 ! gogatv.org
 
-gogatv.org###overlayAd
 
+gogatv.org###overlayAd:remove()
 
 
 ! adjaranet.ai
 
-adjaranet.ai##div.avc-asv
-||adjaranet.ai/rolls/cat/*
-||adjaranet.ai/*asvl/banner*$all
-adjaranet.ai##.ad-catfish
-||adjaranet.ai*asvl*$all
 
-
-
-! ufasofilmebi.net
-
-
-ufasofilmebi.net##img
-||ufasofilmebi.cc*
+adjaranet.ai##div.avc-asv:remove()
+adjaranet.ai##.ad-catfish:remove()
 
 
 
 ! asia.com.ge
 
 
-asia.com.ge##a[href="https://asia.com.ge/donacia.html"]
-asia.com.ge##div[style="text-align:center;"]
-
+asia.com.ge##a[href="https://asia.com.ge/donacia.html"]:remove()
+asia.com.ge##div[style="text-align:center;"]:remove()
 
 
 ! gemovie.tv
 
-gemovie.tv###sn-overlay-1
+
+gemovie.tv###sn-overlay-1:remove()
 
 
 
 ! myvideo.ge
 
-myvideo.ge##.video-player-cont > div[style*="display: block"]
 
+myvideo.ge##.video-player-cont > div[style*="display: block"]:remove()
 
 
 ! ufasofilmebi.ge
 
 
-ufasofilmebi.ge###banner-container
-ufasofilmebi.ge###donatePopup
-ufasofilmebi.tv###app-banner-container
-ufasofilmebi.tv###ufaso-chat
-ufasofilmebi.tv##.premium-ad-item
-ufasofilmebi.tv###ufpn-b
+ufasofilmebi.ge###banner-container:remove()
+ufasofilmebi.ge###donatePopup:remove()
+ufasofilmebi.tv###app-banner-container:remove()
+ufasofilmebi.tv###ufaso-chat:remove()
+ufasofilmebi.tv##.premium-ad-item:remove()
+ufasofilmebi.tv###ufpn-b:remove()
 
 
 
 ! geofilms.net
 
 
-geofilms.net##div[id^="bannerPlace"]
-geofilms.net##div[class*="jw"][class*="overlay"]
-
+geofilms.net##div[id^="bannerPlace"]:remove()
+geofilms.net##div[class*="jw"][class*="overlay"]:remove()
 
 
 ! liveball.sx
 
 
 ||cdn.lbs.pw/prm/adjarabet*
-liveball.sx##.fullscreen-block
+liveball.sx##.fullscreen-block:remove()
 ||cdn.lbs.pw/prm/adjarabet/catfish*
-liveball.sx##a.catfish_block
-liveball.sx##div[class*="freebet"]
-liveball.sx##div[class*="banner_player"]
-liveball.sx##.odds_m_block *
-liveball.sx##.custom_brand_mobile
-liveball.sx##.catfish_sec
-liveball.sx##div[data-noclick="1"]
-liveball.sx###notice
-liveball.sx##div.free.align_center
-liveball.sx##div.tg_block.align_center
+liveball.sx##a.catfish_block:remove()
+liveball.sx##div[class*="freebet"]:remove()
+liveball.sx##div[class*="banner_player"]:remove()
+liveball.sx##.odds_m_block *:remove()
+liveball.sx##.custom_brand_mobile:remove()
+liveball.sx##.catfish_sec:remove()
+liveball.sx##div[data-noclick="1"]:remove()
+liveball.sx###notice:remove()
+liveball.sx##div.free.align_center:remove()
+liveball.sx##div.tg_block.align_center:remove()
 liveball.sx#$#div.free.align_center { remove: true; }
 liveball.sx#$#div.tg_block.align_center { remove: true; }
 
@@ -392,85 +390,69 @@ liveball.sx#$#div.tg_block.align_center { remove: true; }
 
 ! kinolab.cc
 
-
 kinolab.cc##.jw-overlays:remove()
-kinolab.cc##div[class="avc-asvla"]
-kinolab.cc##.top-banner
-kinolab.cc##.jw-media:has(video[src*="/ads/"])
-kinolab.cc#$?#.jw-media:has(video[src*="/ads/"]) { display: none !important; }
-
+kinolab.cc##div[class="avc-asvla"]:remove()
+kinolab.cc##.top-banner:remove()
+kinolab.cc##.jw-media:has(video[src*="/ads/"]):remove()
 
 
 ! kinomigma.com
 
-
-kinomigma.com###donateModal
-kinomigma.com#$###donateModal { remove: true }
+kinomigma.com###donateModal:remove()
 kinomigma.com#$#body { overflow: auto !important; }
-kinomigma.com###donateModal + .modal-backdrop
-
+kinomigma.com###donateModal + .modal-backdrop:remove()
 
 
 ! televiziebi.tv
 
 
-televiziebi.tv##div[class*="home"] a[href*="welcome"]
-televiziebi.tv##img[src*="asvla"]
-televiziebi.tv##.video-overlay-banner *
+televiziebi.tv##div[class*="home"] a[href*="welcome"]:remove()
+televiziebi.tv##img[src*="asvla"]:remove()
+televiziebi.tv##.video-overlay-banner *:remove()
 
-
-! adjaranet.in
 
 
 ! kinogo.my
 
-
-kinogo.my##.regpro
-kinogo.my##div#pwa-bar.pwa-show
+kinogo.my##.regpro:remove()
+kinogo.my##div#pwa-bar.pwa-show:remove()
 
 
 
 ! geosaitebi.tv
 
 
-geosaitebi.tv##.ad-catfish__desktop
-geosaitebi.tv##div.avc-asv
-geosaitebi.tv##div.jw-overlays.jw-reset
+geosaitebi.tv##.ad-catfish__desktop:remove()
+geosaitebi.tv##div.avc-asv:remove()
+geosaitebi.tv##div.jw-overlays.jw-reset:remove()
 
 
 
 ! tnaflix.com
 
-
-tnaflix.com##div#bannerBlock_head
-
+tnaflix.com##div#bannerBlock_head:remove()
 
 
 ! croconet.cam
 
-
-croconet.cam##img[src^="/decorations/exclusive/"]
-croconet.cam##a[href*="croco"]
-croconet.cam##a[href*="watch"]
-croconet.cam##a[class*="bg-linear"]
-croconet.cam##div iframe
-croconet.cam##a[href="/plus"]
-croconet.cam##a[aria-hidden="true"][data-nosnippet="true"]
-croconet.cam##div[class*="bg-main/"]
-croconet.cam##div.fixed:has(iframe[title="sticky-banner"])
-
+croconet.cam##img[src^="/decorations/exclusive/"]:remove()
+croconet.cam##a[href*="croco"]:remove()
+croconet.cam##a[href*="watch"]:remove()
+croconet.cam##a[class*="bg-linear"]:remove()
+croconet.cam##div iframe:remove()
+croconet.cam##a[href="/plus"]:remove()
+croconet.cam##a[aria-hidden="true"][data-nosnippet="true"]:remove()
+croconet.cam##div[class*="bg-main/"]:remove()
+croconet.cam##div.fixed:has(iframe[title="sticky-banner"]):remove()
 
 
 ! mykadri.tv
 
-
-mykadri.tv##.mykadri-catfish
-mykadri.tv##.mykadri-device-banner:remove()
-mykadri.tv##.fullstory-banner-top-v4
 mykadri.tv##.mykadri-catfish:remove()
-mykadri.tv##.avc-asvla
+mykadri.tv##.mykadri-device-banner:remove()
+mykadri.tv##.fullstory-banner-top-v4:remove()
+mykadri.tv##.avc-asvla:remove()
 mykadri.tv##center:has(> .mykadri-device-banner):remove()
 mykadri.tv#%#//scriptlet('remove-class', 'is-visible', 'div.mykadri-catfish')
-
 
 ! CSS Element Hiding Rules~^
